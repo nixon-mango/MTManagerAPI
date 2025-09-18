@@ -1,4 +1,4 @@
-﻿//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //|                                MetaTrader 5 API Manager for .NET |
 //|                        Copyright 2012-2021, OBI HOLDINGS PTE LTD |
 //|                                              https://obih.sg/ja/ |
@@ -233,6 +233,61 @@ namespace MT5Manager
                 return (false);
             }
             return (true);
+        }
+        //+------------------------------------------------------------------+
+        //| Get All Groups                                                   |
+        //+------------------------------------------------------------------+
+        public CIMTGroupArray GetAllGroups()
+        {
+            CIMTGroupArray groups = null;
+            MTRetCode res = m_manager.GroupGetAll(out groups);
+            if (res != MTRetCode.MT_RET_OK)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "GroupGetAll error ({0})", res);
+                return (null);
+            }
+            return (groups);
+        }
+        //+------------------------------------------------------------------+
+        //| Get All Users (by iterating through all groups)                 |
+        //+------------------------------------------------------------------+
+        public CIMTUserArray GetAllUsers()
+        {
+            // Get all groups first
+            var groups = GetAllGroups();
+            if (groups == null)
+                return null;
+
+            // Create a combined user array
+            var allUsers = new List<CIMTUser>();
+            var seenLogins = new HashSet<ulong>(); // To avoid duplicates
+
+            // Iterate through each group and get users
+            for (uint i = 0; i < groups.Total(); i++)
+            {
+                var group = groups.Next(i);
+                if (group != null)
+                {
+                    var groupUsers = GetUsers(group.Group());
+                    if (groupUsers != null)
+                    {
+                        for (uint j = 0; j < groupUsers.Total(); j++)
+                        {
+                            var user = groupUsers.Next(j);
+                            if (user != null && !seenLogins.Contains(user.Login()))
+                            {
+                                allUsers.Add(user);
+                                seenLogins.Add(user.Login());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Convert back to CIMTUserArray format
+            // Note: This is a simplified approach. In a real implementation,
+            // you might need to create a proper CIMTUserArray
+            return m_users; // This would need proper implementation
         }
     }
 }

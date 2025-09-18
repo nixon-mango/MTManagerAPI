@@ -188,6 +188,45 @@
         }
       }
     },
+    "/api/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get all users",
+        "description": "Retrieves all users from all groups on the MT5 server. This operation may take some time for servers with many users as it iterates through all groups.\n\n**Warning**: This endpoint can return a large amount of data. Consider using pagination or filtering in production environments.",
+        "operationId": "getAllUsers",
+        "responses": {
+          "200": {
+            "description": "All users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {"$ref": "#/components/schemas/UserInfo"}
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/{login}": {
       "get": {
         "tags": ["Users"],

@@ -118,6 +118,10 @@ namespace MT5WebAPI
                         string loginStr = ExtractFromPath(path, "/api/account/", "");
                         responseText = _controller.GetAccount(loginStr);
                     }
+                    else if (path == "/api/users" && method == "GET")
+                    {
+                        responseText = _controller.GetAllUsers();
+                    }
                     else if (path.StartsWith("/api/group/") && path.EndsWith("/users") && method == "GET")
                     {
                         string groupName = ExtractFromPath(path, "/api/group/", "/users");

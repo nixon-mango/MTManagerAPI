@@ -70,15 +70,18 @@ namespace MT5ConsoleApp
                                 GetAccountInfo(api);
                                 break;
                             case "3":
-                                GetUsersInGroup(api);
+                                GetAllUsers(api);
                                 break;
                             case "4":
-                                GetUserGroup(api);
+                                GetUsersInGroup(api);
                                 break;
                             case "5":
-                                PerformBalanceOperation(api);
+                                GetUserGroup(api);
                                 break;
                             case "6":
+                                PerformBalanceOperation(api);
+                                break;
+                            case "7":
                                 GetUserDeals(api);
                                 break;
                             case "0":
@@ -121,10 +124,11 @@ namespace MT5ConsoleApp
             Console.WriteLine("=== MT5 Manager API Menu ===");
             Console.WriteLine("1. Get User Information");
             Console.WriteLine("2. Get Account Information");
-            Console.WriteLine("3. Get Users in Group");
-            Console.WriteLine("4. Get User Group");
-            Console.WriteLine("5. Perform Balance Operation");
-            Console.WriteLine("6. Get User Deals");
+            Console.WriteLine("3. Get All Users");
+            Console.WriteLine("4. Get Users in Group");
+            Console.WriteLine("5. Get User Group");
+            Console.WriteLine("6. Perform Balance Operation");
+            Console.WriteLine("7. Get User Deals");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option: ");
@@ -183,6 +187,65 @@ namespace MT5ConsoleApp
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void GetAllUsers(MT5ApiWrapper api)
+        {
+            try
+            {
+                Console.WriteLine("\n=== Getting All Users ===");
+                Console.WriteLine("⚠️  Warning: This may take some time for servers with many users...");
+                
+                var users = api.GetAllUsers();
+                
+                Console.WriteLine($"\n✓ Retrieved {users.Count} users total");
+                
+                if (users.Count > 0)
+                {
+                    Console.WriteLine("\n📊 Summary by Group:");
+                    var groupSummary = users.GroupBy(u => u.Group)
+                                           .OrderByDescending(g => g.Count())
+                                           .Take(10);
+                    
+                    foreach (var group in groupSummary)
+                    {
+                        Console.WriteLine($"   {group.Key}: {group.Count()} users");
+                    }
+                    
+                    Console.WriteLine($"\n📋 Sample Users (showing first 10):");
+                    Console.WriteLine("Login       | Name                 | Group        | Country");
+                    Console.WriteLine("------------|----------------------|--------------|------------------");
+                    
+                    foreach (var user in users.Take(10))
+                    {
+                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-12} | {user.Country}");
+                    }
+                    
+                    if (users.Count > 10)
+                    {
+                        Console.WriteLine($"... and {users.Count - 10} more users");
+                    }
+                    
+                    // Activity analysis
+                    var now = DateTime.Now;
+                    var activeToday = users.Count(u => (now - u.LastAccess).Days == 0);
+                    var activeWeek = users.Count(u => (now - u.LastAccess).Days <= 7);
+                    var activeMonth = users.Count(u => (now - u.LastAccess).Days <= 30);
+                    
+                    Console.WriteLine($"\n📈 Activity Summary:");
+                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / users.Count:F1}%)");
+                }
+                else
+                {
+                    Console.WriteLine("No users found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting all users: {ex.Message}");
             }
         }
 

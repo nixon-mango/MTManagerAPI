@@ -128,6 +128,19 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetAllUsers()
+        {
+            try
+            {
+                var users = _api.GetAllUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all users error: {ex.Message}"));
+            }
+        }
+
         public string GetUsersInGroup(string groupName)
         {
             try

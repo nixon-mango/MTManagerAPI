@@ -110,6 +110,11 @@ $tests = @(
         Description = "Get Account Info (will fail if not connected)"
     },
     @{
+        Url = "$ApiUrl/api/users"
+        Method = "GET"
+        Description = "Get All Users (will fail if not connected)"
+    },
+    @{
         Url = "$ApiUrl/api/group/demo/users"
         Method = "GET"
         Description = "Get Users in Group (will fail if not connected)"
