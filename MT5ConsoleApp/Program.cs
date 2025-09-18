@@ -198,58 +198,79 @@ namespace MT5ConsoleApp
         {
             try
             {
-                Console.WriteLine("\n=== Getting All Users ===");
-                Console.WriteLine("⚠️  Warning: This may take some time for servers with many users...");
+                Console.WriteLine("\n=== Getting All Users (Enhanced Discovery) ===");
+                Console.WriteLine("🔍 Step 1: Getting users from your real groups...");
                 
-                var users = api.GetAllUsers();
+                // First, get the real users to show progress
+                var realUsers = api.GetAllRealUsers();
+                Console.WriteLine($"✓ Found {realUsers.Count} users in your real groups");
                 
-                Console.WriteLine($"\n✓ Retrieved {users.Count} users total");
+                Console.WriteLine("🔍 Step 2: Expanding discovery using login ID patterns...");
+                Console.WriteLine("⚠️  This may take some time as we search for additional users...");
                 
-                if (users.Count > 0)
+                var allUsers = api.GetAllUsers();
+                
+                Console.WriteLine($"\n✅ Discovery Complete!");
+                Console.WriteLine($"📊 Total Users Found: {allUsers.Count}");
+                Console.WriteLine($"   - From real groups: {realUsers.Count}");
+                Console.WriteLine($"   - Additional discovered: {allUsers.Count - realUsers.Count}");
+                
+                if (allUsers.Count > 0)
                 {
                     Console.WriteLine("\n📊 Summary by Group:");
-                    var groupSummary = users.GroupBy(u => u.Group)
-                                           .OrderByDescending(g => g.Count())
-                                           .Take(10);
+                    var groupSummary = allUsers.GroupBy(u => u.Group)
+                                              .OrderByDescending(g => g.Count())
+                                              .Take(10);
                     
                     foreach (var group in groupSummary)
                     {
                         Console.WriteLine($"   {group.Key}: {group.Count()} users");
                     }
                     
-                    Console.WriteLine($"\n📋 Sample Users (showing first 10):");
-                    Console.WriteLine("Login       | Name                 | Group        | Country");
-                    Console.WriteLine("------------|----------------------|--------------|------------------");
+                    Console.WriteLine($"\n📋 Sample Users (showing first 15):");
+                    Console.WriteLine("Login       | Name                 | Group                | Country");
+                    Console.WriteLine("------------|----------------------|----------------------|------------------");
                     
-                    foreach (var user in users.Take(10))
+                    foreach (var user in allUsers.Take(15))
                     {
-                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-12} | {user.Country}");
+                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-20} | {user.Country}");
                     }
                     
-                    if (users.Count > 10)
+                    if (allUsers.Count > 15)
                     {
-                        Console.WriteLine($"... and {users.Count - 10} more users");
+                        Console.WriteLine($"... and {allUsers.Count - 15} more users");
                     }
+                    
+                    // Discovery analysis
+                    var loginRanges = allUsers.Select(u => u.Login).OrderBy(l => l).ToList();
+                    var minLogin = loginRanges.First();
+                    var maxLogin = loginRanges.Last();
+                    
+                    Console.WriteLine($"\n🔍 Discovery Analysis:");
+                    Console.WriteLine($"   Login ID range: {minLogin} - {maxLogin}");
+                    Console.WriteLine($"   Groups discovered: {allUsers.Select(u => u.Group).Distinct().Count()}");
                     
                     // Activity analysis
                     var now = DateTime.Now;
-                    var activeToday = users.Count(u => (now - u.LastAccess).Days == 0);
-                    var activeWeek = users.Count(u => (now - u.LastAccess).Days <= 7);
-                    var activeMonth = users.Count(u => (now - u.LastAccess).Days <= 30);
+                    var activeToday = allUsers.Count(u => (now - u.LastAccess).Days == 0);
+                    var activeWeek = allUsers.Count(u => (now - u.LastAccess).Days <= 7);
+                    var activeMonth = allUsers.Count(u => (now - u.LastAccess).Days <= 30);
                     
                     Console.WriteLine($"\n📈 Activity Summary:");
-                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / users.Count:F1}%)");
-                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / users.Count:F1}%)");
-                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / allUsers.Count:F1}%)");
+                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / allUsers.Count:F1}%)");
+                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / allUsers.Count:F1}%)");
                 }
                 else
                 {
-                    Console.WriteLine("No users found.");
+                    Console.WriteLine("❌ No users found.");
+                    Console.WriteLine("💡 Try using option 4 (Get All Real Users) to see if your groups are accessible.");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error getting all users: {ex.Message}");
+                Console.WriteLine("💡 Try using option 4 (Get All Real Users) which is known to work.");
             }
         }
 

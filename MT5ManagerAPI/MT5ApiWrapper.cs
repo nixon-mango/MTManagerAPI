@@ -182,9 +182,9 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
-        /// Get all users from specified groups
+        /// Get all users by discovering them from known working groups and then expanding with individual user lookups
         /// </summary>
-        /// <param name="groupNames">Array of group names to query. If null, uses common group names.</param>
+        /// <param name="groupNames">Array of group names to query. If null, uses your real groups + discovery.</param>
         /// <returns>List of all users from the specified groups</returns>
         public List<UserInfo> GetAllUsers(string[] groupNames = null)
         {
@@ -224,8 +224,21 @@ namespace MT5ManagerAPI
                 }
                 else
                 {
-                    // Use common group discovery
-                    return GetAllUsersFromCommonGroups();
+                    // Start with your working real groups
+                    var realUsers = GetAllRealUsers();
+                    foreach (var user in realUsers)
+                    {
+                        if (!seenLogins.Contains(user.Login))
+                        {
+                            allUsers.Add(user);
+                            seenLogins.Add(user.Login);
+                        }
+                    }
+
+                    // Then try to discover more users by expanding the search
+                    // This uses the working real users as a foundation to discover more
+                    var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
+                    allUsers.AddRange(expandedUsers);
                 }
 
                 return allUsers;
@@ -234,6 +247,127 @@ namespace MT5ManagerAPI
             {
                 throw new MT5ApiException($"Failed to get all users: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Expand user discovery by trying to find more users around known login IDs
+        /// </summary>
+        /// <param name="knownUsers">Users we already found</param>
+        /// <param name="seenLogins">Login IDs we've already processed</param>
+        /// <returns>List of additional users found</returns>
+        private List<UserInfo> ExpandUserDiscovery(List<UserInfo> knownUsers, HashSet<ulong> seenLogins)
+        {
+            var expandedUsers = new List<UserInfo>();
+            
+            if (knownUsers.Count == 0)
+                return expandedUsers;
+
+            try
+            {
+                // Strategy 1: Try login IDs around known users (sequential discovery)
+                var loginRanges = GetLoginRanges(knownUsers);
+                
+                foreach (var range in loginRanges)
+                {
+                    for (ulong loginId = range.Start; loginId <= range.End; loginId++)
+                    {
+                        if (seenLogins.Contains(loginId))
+                            continue;
+
+                        try
+                        {
+                            var user = GetUser(loginId);
+                            if (user != null)
+                            {
+                                expandedUsers.Add(user);
+                                seenLogins.Add(loginId);
+                                
+                                // Limit to avoid too many API calls
+                                if (expandedUsers.Count >= 100)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Reached expansion limit of 100 additional users");
+                                    return expandedUsers;
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // User doesn't exist or access denied, continue
+                            continue;
+                        }
+                    }
+                }
+
+                // Strategy 2: Try common login ID patterns
+                var patternUsers = TryCommonLoginPatterns(seenLogins);
+                expandedUsers.AddRange(patternUsers);
+
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in user discovery expansion: {ex.Message}");
+            }
+
+            return expandedUsers;
+        }
+
+        /// <summary>
+        /// Get login ID ranges around known users for sequential discovery
+        /// </summary>
+        private List<(ulong Start, ulong End)> GetLoginRanges(List<UserInfo> knownUsers)
+        {
+            var ranges = new List<(ulong Start, ulong End)>();
+            var sortedLogins = knownUsers.Select(u => u.Login).OrderBy(l => l).ToList();
+
+            foreach (var login in sortedLogins)
+            {
+                // Check range around each known login (±50)
+                ulong start = login > 50 ? login - 50 : 1;
+                ulong end = login + 50;
+                
+                ranges.Add((start, end));
+            }
+
+            return ranges.Take(5).ToList(); // Limit to 5 ranges to avoid too many API calls
+        }
+
+        /// <summary>
+        /// Try common login ID patterns
+        /// </summary>
+        private List<UserInfo> TryCommonLoginPatterns(HashSet<ulong> seenLogins)
+        {
+            var patternUsers = new List<UserInfo>();
+            
+            // Common patterns: 1-100, 1000-1100, 10000-10100, etc.
+            ulong[] commonStarts = { 1, 100, 1000, 10000, 100000 };
+            
+            foreach (var start in commonStarts)
+            {
+                for (ulong i = start; i < start + 20; i++) // Check first 20 in each range
+                {
+                    if (seenLogins.Contains(i))
+                        continue;
+
+                    try
+                    {
+                        var user = GetUser(i);
+                        if (user != null)
+                        {
+                            patternUsers.Add(user);
+                            seenLogins.Add(i);
+                            
+                            if (patternUsers.Count >= 20) // Limit pattern discovery
+                                return patternUsers;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            return patternUsers;
         }
 
         /// <summary>
