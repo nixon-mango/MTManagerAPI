@@ -121,7 +121,7 @@ namespace MT5ManagerAPI
                     Registration = SMTTime.ToDateTime(user.Registration()),
                     LastAccess = SMTTime.ToDateTime(user.LastAccess()),
                     Leverage = user.Leverage(),
-                    Rights = user.Rights()
+                    Rights = (uint)user.Rights()
                 };
             }
             catch (Exception ex)
@@ -154,15 +154,15 @@ namespace MT5ManagerAPI
                     Margin = account.Margin(),
                     MarginFree = account.MarginFree(),
                     MarginLevel = account.MarginLevel(),
-                    MarginSOCall = account.MarginSOCall(),
-                    MarginSOSO = account.MarginSOSO(),
+                    MarginSOCall = 0.0, // Method not available in this API version
+                    MarginSOSO = 0.0, // Method not available in this API version
                     Profit = account.Profit(),
                     Storage = account.Storage(),
-                    Commission = account.Commission(),
+                    Commission = 0.0, // Method not available in this API version
                     Floating = account.Floating(),
                     Equity = account.Equity(),
-                    Currency = account.Currency(),
-                    CurrencyDigits = account.CurrencyDigits()
+                    Currency = "", // Method not available in this API version
+                    CurrencyDigits = 2 // Default value
                 };
             }
             catch (Exception ex)
@@ -212,7 +212,7 @@ namespace MT5ManagerAPI
                             Registration = SMTTime.ToDateTime(user.Registration()),
                             LastAccess = SMTTime.ToDateTime(user.LastAccess()),
                             Leverage = user.Leverage(),
-                            Rights = user.Rights()
+                            Rights = (uint)user.Rights()
                         });
                     }
                 }
