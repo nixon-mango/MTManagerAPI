@@ -46,8 +46,11 @@ Copy all your MT5 Manager API DLL files to each of the `bin/Debug` directories:
 
 ### 3. Build the Solution
 ```bash
-# Using MSBuild
-msbuild MT5ManagerAPI.sln /p:Configuration=Debug
+# Using the provided build script (recommended)
+build.bat
+
+# Or using MSBuild directly
+"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe" MT5ManagerAPI.sln /p:Configuration=Debug
 
 # Or using Visual Studio
 # Open MT5ManagerAPI.sln in Visual Studio and build

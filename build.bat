@@ -1,16 +1,22 @@
 @echo off
 echo Building MT5 Manager API Solution...
 
-REM Check if MSBuild is available
-where msbuild >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo MSBuild not found in PATH. Please ensure Visual Studio or Build Tools are installed.
+REM Set MSBuild path
+set MSBUILD_PATH="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+
+REM Check if MSBuild exists at the specified path
+if not exist %MSBUILD_PATH% (
+    echo MSBuild not found at: %MSBUILD_PATH%
+    echo Please ensure Visual Studio Build Tools 2022 are installed.
     pause
     exit /b 1
 )
 
+echo Using MSBuild at: %MSBUILD_PATH%
+echo.
+
 REM Build the solution
-msbuild MT5ManagerAPI.sln /p:Configuration=Debug /p:Platform="Any CPU" /verbosity:minimal
+%MSBUILD_PATH% MT5ManagerAPI.sln /p:Configuration=Debug /p:Platform="Any CPU" /verbosity:minimal
 
 if %ERRORLEVEL% equ 0 (
     echo.
