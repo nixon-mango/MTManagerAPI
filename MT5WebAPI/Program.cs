@@ -11,7 +11,7 @@ namespace MT5WebAPI
             Console.WriteLine();
 
             // Parse command line arguments
-            string host = "0.0.0.0";  // Changed default to bind to all interfaces
+            string host = "localhost";  // Default to localhost (no admin required)
             int port = 8080;
 
             for (int i = 0; i < args.Length; i++)
