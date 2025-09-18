@@ -351,38 +351,39 @@ namespace MT5Manager
             return (true);
         }
         //+------------------------------------------------------------------+
-        //| Get All Positions (from all users in a group)                   |
+        //| Get All Positions (fallback: get individual user positions)     |
         //+------------------------------------------------------------------+
-        public bool GetGroupPositions(out CIMTPositionArray positions, string group)
+        public System.Collections.Generic.List<CIMTPositionArray> GetGroupPositionsFallback(string group)
         {
-            positions = null;
-            MTRetCode res = m_manager.PositionRequestGroup(group, m_positions);
-            if (res != MTRetCode.MT_RET_OK)
-            {
-                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequestGroup fail({0})", res);
-                return (false);
-            }
-            positions = m_positions;
-            return (true);
-        }
-        //+------------------------------------------------------------------+
-        //| Get Position by Symbol for User                                  |
-        //+------------------------------------------------------------------+
-        public bool GetUserPositionBySymbol(out CIMTPosition position, UInt64 login, string symbol)
-        {
-            position = null;
-            var pos = m_manager.PositionCreate();
-            if (pos == null) return false;
+            var positionArrays = new System.Collections.Generic.List<CIMTPositionArray>();
             
-            MTRetCode res = m_manager.PositionRequestSymbol(login, symbol, pos);
-            if (res != MTRetCode.MT_RET_OK)
+            // Get users in the group first
+            var users = GetUsers(group);
+            if (users == null) return positionArrays;
+            
+            // Get positions for each user in the group
+            for (uint i = 0; i < Math.Min(users.Total(), 50); i++) // Limit to 50 users to avoid too many API calls
             {
-                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequestSymbol fail({0})", res);
-                pos.Dispose();
-                return (false);
+                var user = users.Next(i);
+                if (user != null)
+                {
+                    try
+                    {
+                        CIMTPositionArray userPositions;
+                        if (GetUserPositions(out userPositions, user.Login()))
+                        {
+                            positionArrays.Add(userPositions);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Continue with next user if this one fails
+                        continue;
+                    }
+                }
             }
-            position = pos;
-            return (true);
+            
+            return positionArrays;
         }
     }
 }

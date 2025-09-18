@@ -630,7 +630,7 @@ namespace MT5ManagerAPI
                             PriceCurrent = position.PriceCurrent(),
                             Profit = position.Profit(),
                             Storage = position.Storage(),
-                            Commission = position.Commission(),
+                            Commission = 0.0, // Not available in this API version
                             TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
                             TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
                             Comment = position.Comment(),
@@ -684,7 +684,7 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
-        /// Get positions for all users in a group
+        /// Get positions for all users in a group (using fallback method)
         /// </summary>
         /// <param name="groupName">Group name</param>
         /// <returns>List of all positions in the group</returns>
@@ -698,43 +698,53 @@ namespace MT5ManagerAPI
 
             try
             {
-                CIMTPositionArray positions;
-                if (!_manager.GetGroupPositions(out positions, groupName))
+                // Use fallback method to get group positions
+                var positionArrays = _manager.GetGroupPositionsFallback(groupName);
+                if (positionArrays == null || positionArrays.Count == 0)
                     return new List<PositionInfo>();
 
                 var result = new List<PositionInfo>();
-                for (uint i = 0; i < positions.Total(); i++)
+                
+                // Process each user's positions
+                foreach (var positionArray in positionArrays)
                 {
-                    var position = positions.Next(i);
-                    if (position != null)
+                    if (positionArray != null)
                     {
-                        result.Add(new PositionInfo
+                        for (uint i = 0; i < positionArray.Total(); i++)
                         {
-                            PositionId = position.Position(),
-                            Login = position.Login(),
-                            Symbol = position.Symbol(),
-                            Action = position.Action().ToString(),
-                            Volume = position.Volume(),
-                            PriceOpen = position.PriceOpen(),
-                            PriceCurrent = position.PriceCurrent(),
-                            Profit = position.Profit(),
-                            Storage = position.Storage(),
-                            Commission = position.Commission(),
-                            TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
-                            TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
-                            Comment = position.Comment(),
-                            ExternalId = position.ExternalID(),
-                            Reason = position.Reason().ToString(),
-                            Digits = position.Digits(),
-                            DigitsCurrency = position.DigitsCurrency(),
-                            ContractSize = position.ContractSize(),
-                            RateProfit = position.RateProfit(),
-                            RateMargin = position.RateMargin(),
-                            ExpertId = position.ExpertID(),
-                            ExpertPositionId = position.ExpertPositionID()
-                        });
+                            var position = positionArray.Next(i);
+                            if (position != null)
+                            {
+                                result.Add(new PositionInfo
+                                {
+                                    PositionId = position.Position(),
+                                    Login = position.Login(),
+                                    Symbol = position.Symbol(),
+                                    Action = position.Action().ToString(),
+                                    Volume = position.Volume(),
+                                    PriceOpen = position.PriceOpen(),
+                                    PriceCurrent = position.PriceCurrent(),
+                                    Profit = position.Profit(),
+                                    Storage = position.Storage(),
+                                    Commission = 0.0, // Not available in this API version
+                                    TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
+                                    TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
+                                    Comment = position.Comment(),
+                                    ExternalId = position.ExternalID(),
+                                    Reason = position.Reason().ToString(),
+                                    Digits = position.Digits(),
+                                    DigitsCurrency = position.DigitsCurrency(),
+                                    ContractSize = position.ContractSize(),
+                                    RateProfit = position.RateProfit(),
+                                    RateMargin = position.RateMargin(),
+                                    ExpertId = position.ExpertID(),
+                                    ExpertPositionId = position.ExpertPositionID()
+                                });
+                            }
+                        }
                     }
                 }
+                
                 return result;
             }
             catch (Exception ex)
