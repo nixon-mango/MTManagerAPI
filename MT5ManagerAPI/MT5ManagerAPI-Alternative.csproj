@@ -33,23 +33,44 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  
+  <!-- Conditional references based on available DLLs -->
   <ItemGroup>
-    <Reference Include="MetaQuotes.MT5CommonAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5CommonAPI.dll</HintPath>
+    <!-- Try 64-bit DLLs first -->
+    <Reference Include="MetaQuotes.MT5CommonAPI" Condition="Exists('$(OutputPath)MetaQuotes.MT5CommonAPI64.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5CommonAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MetaQuotes.MT5GatewayAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5GatewayAPI.dll</HintPath>
+    <Reference Include="MetaQuotes.MT5GatewayAPI" Condition="Exists('$(OutputPath)MetaQuotes.MT5GatewayAPI64.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5GatewayAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MetaQuotes.MT5ManagerAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5ManagerAPI.dll</HintPath>
+    <Reference Include="MetaQuotes.MT5ManagerAPI" Condition="Exists('$(OutputPath)MetaQuotes.MT5ManagerAPI64.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5ManagerAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MetaQuotes.MT5WebAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5WebAPI.dll</HintPath>
+    
+    <!-- Fallback to 32-bit DLLs if 64-bit not available -->
+    <Reference Include="MetaQuotes.MT5CommonAPI" Condition="!Exists('$(OutputPath)MetaQuotes.MT5CommonAPI64.dll') AND Exists('$(OutputPath)MetaQuotes.MT5CommonAPI.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5CommonAPI.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="MetaQuotes.MT5GatewayAPI" Condition="!Exists('$(OutputPath)MetaQuotes.MT5GatewayAPI64.dll') AND Exists('$(OutputPath)MetaQuotes.MT5GatewayAPI.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5GatewayAPI.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="MetaQuotes.MT5ManagerAPI" Condition="!Exists('$(OutputPath)MetaQuotes.MT5ManagerAPI64.dll') AND Exists('$(OutputPath)MetaQuotes.MT5ManagerAPI.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5ManagerAPI.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    
+    <!-- WebAPI DLL (usually not architecture-specific) -->
+    <Reference Include="MetaQuotes.MT5WebAPI" Condition="Exists('$(OutputPath)MetaQuotes.MT5WebAPI.dll')">
+      <HintPath>$(OutputPath)MetaQuotes.MT5WebAPI.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    
+    <!-- Standard .NET references -->
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -62,6 +83,7 @@
       <HintPath>packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
   </ItemGroup>
+  
   <ItemGroup>
     <Compile Include="MT5Manager.cs" />
     <Compile Include="MT5ApiWrapper.cs" />
@@ -69,8 +91,21 @@
     <Compile Include="Models\AccountInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  
+  <!-- Post-build check to ensure MT5 DLLs are available -->
+  <Target Name="CheckMT5DLLs" BeforeTargets="Build">
+    <Message Text="Checking for MT5 Manager API DLLs..." Importance="high" />
+    <Error Text="No MT5 Manager API DLLs found in $(OutputPath). Please run setup-dlls.bat first." 
+           Condition="!Exists('$(OutputPath)MetaQuotes.MT5CommonAPI.dll') AND !Exists('$(OutputPath)MetaQuotes.MT5CommonAPI64.dll')" />
+    <Message Text="Found 64-bit MT5 DLLs" Importance="high" 
+             Condition="Exists('$(OutputPath)MetaQuotes.MT5CommonAPI64.dll')" />
+    <Message Text="Found 32-bit MT5 DLLs" Importance="high" 
+             Condition="!Exists('$(OutputPath)MetaQuotes.MT5CommonAPI64.dll') AND Exists('$(OutputPath)MetaQuotes.MT5CommonAPI.dll')" />
+  </Target>
 </Project>
