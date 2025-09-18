@@ -14,6 +14,9 @@ build.bat
 
 # 4. Test with console app
 MT5ConsoleApp\bin\Debug\MT5ConsoleApp.exe
+
+# 5. Start Web API for external access
+start-api-external.bat
 ```
 
 ## 📋 What's Included
@@ -141,10 +144,17 @@ Interactive command-line tool with menu-driven interface:
 ### 2. Web API Server (`MT5WebAPI`)
 RESTful API server providing HTTP endpoints:
 - `POST /api/connect` - Server connection
-- `GET /api/user/{login}` - User information
+- `GET /api/users` - All users (enhanced discovery)
+- `GET /api/users/real` - Users from your real groups
+- `GET /api/users/stats` - Discovery statistics
+- `GET /api/user/{login}` - Individual user information
 - `GET /api/account/{login}` - Account details
 - `POST /api/balance` - Balance operations
 - `GET /api/status` - Connection status
+
+**Access Options:**
+- **Local only:** `start-api-local.bat`
+- **Network access:** `start-api-external.bat` (uses your static IP)
 
 ### 3. Windows Forms Applications
 Original GUI applications for both MT4 and MT5 with form-based interfaces.
