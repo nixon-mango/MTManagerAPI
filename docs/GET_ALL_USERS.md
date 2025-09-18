@@ -26,18 +26,20 @@ List<UserInfo> GetAllUsers()
 ### **Implementation Strategy**
 Since MT5 doesn't have a direct "get all users" method like MT4, the implementation:
 
-1. **Gets all groups** from the MT5 server using `GroupGetAll()`
-2. **Iterates through each group** and retrieves users using `GetUsers(groupName)`
+1. **Tries common group names** (demo, real, vip, standard, premium, etc.)
+2. **Iterates through each existing group** and retrieves users using `GetUsers(groupName)`
 3. **Deduplicates users** to avoid counting users in multiple groups
 4. **Returns consolidated list** of all unique users
+
+**Note**: This approach discovers users from common group names. If your server uses custom group names, you can specify them explicitly.
 
 ### **Architecture**
 ```
 MT5ApiWrapper.GetAllUsers()
     ↓
-MT5Manager.GetAllGroups()
+MT5Manager.GetUsersFromCommonGroups()
     ↓
-For each group: MT5Manager.GetUsers(groupName)
+For each common group: MT5Manager.GetUsers(groupName)
     ↓
 Consolidate and deduplicate
     ↓
@@ -80,10 +82,16 @@ using (var api = new MT5ApiWrapper())
     if (!api.Initialize()) return;
     if (!api.Connect("server.com:443", 12345, "password")) return;
     
-    // Get all users
+    // Get all users from common groups (automatic discovery)
     var allUsers = api.GetAllUsers();
     
     Console.WriteLine($"Total users: {allUsers.Count}");
+    
+    // OR specify custom group names if you know them
+    string[] customGroups = { "my_demo", "my_real", "my_vip" };
+    var customUsers = api.GetAllUsers(customGroups);
+    
+    Console.WriteLine($"Users from custom groups: {customUsers.Count}");
     
     // Group analysis
     var groupSummary = allUsers.GroupBy(u => u.Group)

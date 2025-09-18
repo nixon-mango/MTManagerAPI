@@ -235,59 +235,37 @@ namespace MT5Manager
             return (true);
         }
         //+------------------------------------------------------------------+
-        //| Get All Groups                                                   |
+        //| Get Users from Common Groups (fallback implementation)          |
         //+------------------------------------------------------------------+
-        public CIMTGroupArray GetAllGroups()
+        public System.Collections.Generic.List<CIMTUserArray> GetUsersFromCommonGroups()
         {
-            CIMTGroupArray groups = null;
-            MTRetCode res = m_manager.GroupGetAll(out groups);
-            if (res != MTRetCode.MT_RET_OK)
-            {
-                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "GroupGetAll error ({0})", res);
-                return (null);
-            }
-            return (groups);
-        }
-        //+------------------------------------------------------------------+
-        //| Get All Users (by iterating through all groups)                 |
-        //+------------------------------------------------------------------+
-        public CIMTUserArray GetAllUsers()
-        {
-            // Get all groups first
-            var groups = GetAllGroups();
-            if (groups == null)
-                return null;
+            // Common MT5 group names to try
+            string[] commonGroups = { 
+                "demo", "real", "vip", "standard", "premium", "cent", "micro", 
+                "manager", "admin", "archive", "test", "default", "main",
+                "retail", "professional", "islamic", "swap_free", "ecn"
+            };
 
-            // Create a combined user array
-            var allUsers = new List<CIMTUser>();
-            var seenLogins = new HashSet<ulong>(); // To avoid duplicates
-
-            // Iterate through each group and get users
-            for (uint i = 0; i < groups.Total(); i++)
+            var userArrays = new System.Collections.Generic.List<CIMTUserArray>();
+            
+            foreach (string groupName in commonGroups)
             {
-                var group = groups.Next(i);
-                if (group != null)
+                try
                 {
-                    var groupUsers = GetUsers(group.Group());
-                    if (groupUsers != null)
+                    var users = GetUsers(groupName);
+                    if (users != null && users.Total() > 0)
                     {
-                        for (uint j = 0; j < groupUsers.Total(); j++)
-                        {
-                            var user = groupUsers.Next(j);
-                            if (user != null && !seenLogins.Contains(user.Login()))
-                            {
-                                allUsers.Add(user);
-                                seenLogins.Add(user.Login());
-                            }
-                        }
+                        userArrays.Add(users);
                     }
                 }
+                catch (Exception)
+                {
+                    // Group doesn't exist or access denied, continue with next group
+                    continue;
+                }
             }
-
-            // Convert back to CIMTUserArray format
-            // Note: This is a simplified approach. In a real implementation,
-            // you might need to create a proper CIMTUserArray
-            return m_users; // This would need proper implementation
+            
+            return userArrays;
         }
     }
 }

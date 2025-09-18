@@ -172,67 +172,106 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
-        /// Get all users from all groups
+        /// Get all users from specified groups
         /// </summary>
-        /// <returns>List of all users</returns>
-        public List<UserInfo> GetAllUsers()
+        /// <param name="groupNames">Array of group names to query. If null, uses common group names.</param>
+        /// <returns>List of all users from the specified groups</returns>
+        public List<UserInfo> GetAllUsers(string[] groupNames = null)
         {
             if (!_isConnected)
                 throw new InvalidOperationException("Not connected to MT5 server");
 
             try
             {
-                // Get all groups first
-                var groups = _manager.GetAllGroups();
-                if (groups == null)
-                    return new List<UserInfo>();
+                List<UserInfo> allUsers = new List<UserInfo>();
+                HashSet<ulong> seenLogins = new HashSet<ulong>();
 
-                var allUsers = new List<UserInfo>();
-                var seenLogins = new HashSet<ulong>(); // To avoid duplicates
-
-                // Iterate through each group and get users
-                for (uint i = 0; i < groups.Total(); i++)
+                if (groupNames != null && groupNames.Length > 0)
                 {
-                    var group = groups.Next(i);
-                    if (group != null)
+                    // Use specified group names
+                    foreach (string groupName in groupNames)
                     {
+                        if (string.IsNullOrEmpty(groupName)) continue;
+
                         try
                         {
-                            var groupUsers = _manager.GetUsers(group.Group());
-                            if (groupUsers != null)
+                            var users = GetUsersInGroup(groupName);
+                            foreach (var user in users)
                             {
-                                for (uint j = 0; j < groupUsers.Total(); j++)
+                                if (!seenLogins.Contains(user.Login))
                                 {
-                                    var user = groupUsers.Next(j);
-                                    if (user != null && !seenLogins.Contains(user.Login()))
-                                    {
-                                        allUsers.Add(new UserInfo
-                                        {
-                                            Login = user.Login(),
-                                            Name = user.Name(),
-                                            Group = user.Group(),
-                                            Email = user.EMail(),
-                                            Country = user.Country(),
-                                            City = user.City(),
-                                            State = user.State(),
-                                            ZipCode = user.ZIPCode(),
-                                            Address = user.Address(),
-                                            Phone = user.Phone(),
-                                            Comment = user.Comment(),
-                                            Registration = SMTTime.ToDateTime(user.Registration()),
-                                            LastAccess = SMTTime.ToDateTime(user.LastAccess()),
-                                            Leverage = user.Leverage(),
-                                            Rights = (uint)user.Rights()
-                                        });
-                                        seenLogins.Add(user.Login());
-                                    }
+                                    allUsers.Add(user);
+                                    seenLogins.Add(user.Login);
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
                             // Log error but continue with other groups
-                            System.Diagnostics.Debug.WriteLine($"Error getting users for group {group.Group()}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error getting users for group {groupName}: {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    // Use common group discovery
+                    return GetAllUsersFromCommonGroups();
+                }
+
+                return allUsers;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get all users: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get all users from all discoverable common groups
+        /// </summary>
+        /// <returns>List of all users from common groups</returns>
+        private List<UserInfo> GetAllUsersFromCommonGroups()
+        {
+            try
+            {
+                // Get users from common groups
+                var userArrays = _manager.GetUsersFromCommonGroups();
+                if (userArrays == null || userArrays.Count == 0)
+                    return new List<UserInfo>();
+
+                var allUsers = new List<UserInfo>();
+                var seenLogins = new HashSet<ulong>(); // To avoid duplicates
+
+                // Process each group's users
+                foreach (var userArray in userArrays)
+                {
+                    if (userArray != null)
+                    {
+                        for (uint i = 0; i < userArray.Total(); i++)
+                        {
+                            var user = userArray.Next(i);
+                            if (user != null && !seenLogins.Contains(user.Login()))
+                            {
+                                allUsers.Add(new UserInfo
+                                {
+                                    Login = user.Login(),
+                                    Name = user.Name(),
+                                    Group = user.Group(),
+                                    Email = user.EMail(),
+                                    Country = user.Country(),
+                                    City = user.City(),
+                                    State = user.State(),
+                                    ZipCode = user.ZIPCode(),
+                                    Address = user.Address(),
+                                    Phone = user.Phone(),
+                                    Comment = user.Comment(),
+                                    Registration = SMTTime.ToDateTime(user.Registration()),
+                                    LastAccess = SMTTime.ToDateTime(user.LastAccess()),
+                                    Leverage = user.Leverage(),
+                                    Rights = (uint)user.Rights()
+                                });
+                                seenLogins.Add(user.Login());
+                            }
                         }
                     }
                 }
@@ -241,7 +280,7 @@ namespace MT5ManagerAPI
             }
             catch (Exception ex)
             {
-                throw new MT5ApiException($"Failed to get all users: {ex.Message}", ex);
+                throw new MT5ApiException($"Failed to get users from common groups: {ex.Message}", ex);
             }
         }
 
