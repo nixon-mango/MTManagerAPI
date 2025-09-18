@@ -154,6 +154,8 @@ Original GUI applications for both MT4 and MT5 with form-based interfaces.
 - **[Quick Setup Guide](QUICK_SETUP.md)** - Get started in 5 minutes
 - **[Detailed Setup Instructions](MT5_SETUP_INSTRUCTIONS.md)** - Complete setup guide
 - **[API Documentation](docs/API.md)** - Full API reference
+- **[Swagger/OpenAPI Spec](swagger.yaml)** - Machine-readable API specification
+- **[Interactive Swagger UI](docs/swagger-ui.html)** - Browse and test the API
 - **[Interactive Playground](docs/PLAYGROUND.md)** - Try the API online
 
 ## 🔧 Prerequisites

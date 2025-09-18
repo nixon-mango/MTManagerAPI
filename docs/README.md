@@ -11,6 +11,8 @@ Welcome to the comprehensive documentation for the MT Manager API C# wrapper lib
 
 ### API Reference
 - **[API Documentation](API.md)** - Complete API reference with examples
+- **[Swagger/OpenAPI Specification](../swagger.yaml)** - Machine-readable API specification
+- **[Interactive Swagger UI](swagger-ui.html)** - Browse and test the API interactively
 - **[Interactive Playground](PLAYGROUND.md)** - Hands-on examples and scenarios
 
 ### Project Information

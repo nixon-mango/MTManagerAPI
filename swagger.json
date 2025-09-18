@@ -1,0 +1,664 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MT5 Manager API",
+    "description": "RESTful API for MetaTrader 5 Manager operations including user management, account operations, and trading data retrieval.\n\n## Authentication\nThis API requires Manager-level credentials for MT5 server access. Regular trader accounts will not work.\n\n## Rate Limiting\nAPI calls are subject to rate limiting to protect the MT5 server. Recommended maximum: 100 requests per minute.\n\n## Error Handling\nAll endpoints return standardized error responses with detailed error messages and HTTP status codes.\n\n## Getting Started\n1. Start the MT5WebAPI server\n2. Connect to your MT5 server using the `/api/connect` endpoint\n3. Use other endpoints to manage users and accounts\n\nFor detailed documentation and examples, visit: [Complete Documentation](docs/README.md)",
+    "version": "1.0.0",
+    "contact": {
+      "name": "MT5 Manager API Support",
+      "url": "https://github.com/your-repo/mt5-manager-api"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://your-production-server.com",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Connection",
+      "description": "Server connection management"
+    },
+    {
+      "name": "Users",
+      "description": "User information and management"
+    },
+    {
+      "name": "Accounts",
+      "description": "Account information and balance operations"
+    },
+    {
+      "name": "Groups",
+      "description": "User group management"
+    },
+    {
+      "name": "Trading",
+      "description": "Trading data and operations"
+    },
+    {
+      "name": "System",
+      "description": "System status and health checks"
+    }
+  ],
+  "paths": {
+    "/api/connect": {
+      "post": {
+        "tags": ["Connection"],
+        "summary": "Connect to MT5 server",
+        "description": "Establishes a connection to the MT5 server using Manager credentials. This must be called before using any other API endpoints.",
+        "operationId": "connect",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectRequest"
+              },
+              "examples": {
+                "demo_server": {
+                  "summary": "Demo server connection",
+                  "value": {
+                    "server": "demo.mt5server.com:443",
+                    "login": 12345,
+                    "password": "your-manager-password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connection successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "message": {"type": "string", "example": "Connected successfully"},
+                            "server": {"type": "string", "example": "demo.mt5server.com:443"},
+                            "login": {"type": "integer", "format": "int64", "example": 12345}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          },
+          "500": {
+            "description": "Connection failed",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/disconnect": {
+      "post": {
+        "tags": ["Connection"],
+        "summary": "Disconnect from MT5 server",
+        "description": "Closes the connection to the MT5 server and releases resources.",
+        "operationId": "disconnect",
+        "responses": {
+          "200": {
+            "description": "Disconnection successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "message": {"type": "string", "example": "Disconnected successfully"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Get connection status",
+        "description": "Returns the current connection status and server information.",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "Status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "connected": {"type": "boolean", "example": true},
+                            "timestamp": {"type": "string", "format": "date-time", "example": "2024-01-15T10:30:00Z"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{login}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user information",
+        "description": "Retrieves detailed information about a specific user by their login ID. Includes personal information, registration details, and account settings.",
+        "operationId": "getUser",
+        "parameters": [
+          {
+            "name": "login",
+            "in": "path",
+            "required": true,
+            "description": "User login ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 67890
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {"$ref": "#/components/schemas/UserInfo"}
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid login format",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{login}/group": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user's group",
+        "description": "Retrieves the group name that the specified user belongs to.",
+        "operationId": "getUserGroup",
+        "parameters": [
+          {
+            "name": "login",
+            "in": "path",
+            "required": true,
+            "description": "User login ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 67890
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User group retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "group": {"type": "string", "example": "demo"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{login}/deals": {
+      "get": {
+        "tags": ["Trading"],
+        "summary": "Get user trading deals",
+        "description": "Retrieves trading deals for a specific user within a date range. Returns up to 100 deals by default, sorted by date.",
+        "operationId": "getUserDeals",
+        "parameters": [
+          {
+            "name": "login",
+            "in": "path",
+            "required": true,
+            "description": "User login ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 67890
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Start date for deals (default: 7 days ago)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2024-01-01"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "End date for deals (default: tomorrow)",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2024-01-15"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deals retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "total": {"type": "integer", "example": 25},
+                            "returned": {"type": "integer", "example": 25},
+                            "deals": {
+                              "type": "array",
+                              "items": {"$ref": "#/components/schemas/Deal"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/{login}": {
+      "get": {
+        "tags": ["Accounts"],
+        "summary": "Get account information",
+        "description": "Retrieves detailed account information including balance, equity, margin, and profit/loss. Essential for risk management and account monitoring.",
+        "operationId": "getAccount",
+        "parameters": [
+          {
+            "name": "login",
+            "in": "path",
+            "required": true,
+            "description": "User login ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 67890
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {"$ref": "#/components/schemas/AccountInfo"}
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/group/{groupName}/users": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get users in group",
+        "description": "Retrieves all users belonging to a specific group. Useful for group-based operations and analysis.",
+        "operationId": "getUsersInGroup",
+        "parameters": [
+          {
+            "name": "groupName",
+            "in": "path",
+            "required": true,
+            "description": "Name of the user group",
+            "schema": {
+              "type": "string",
+              "example": "demo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {"$ref": "#/components/schemas/UserInfo"}
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/balance": {
+      "post": {
+        "tags": ["Accounts"],
+        "summary": "Perform balance operation",
+        "description": "Performs a balance operation (deposit or withdrawal) on a user's account. Positive amounts are deposits, negative amounts are withdrawals.\n\n**Important**: This operation directly affects account balance. Use with caution.",
+        "operationId": "performBalanceOperation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/BalanceRequest"},
+              "examples": {
+                "deposit": {
+                  "summary": "Deposit funds",
+                  "value": {
+                    "login": 67890,
+                    "amount": 1000.0,
+                    "comment": "Deposit via API",
+                    "type": 2
+                  }
+                },
+                "withdrawal": {
+                  "summary": "Withdraw funds",
+                  "value": {
+                    "login": 67890,
+                    "amount": -500.0,
+                    "comment": "Withdrawal via API",
+                    "type": 2
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Balance operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "message": {"type": "string", "example": "Balance operation successful"},
+                            "login": {"type": "integer", "format": "int64", "example": 67890},
+                            "amount": {"type": "number", "format": "double", "example": 1000.0},
+                            "comment": {"type": "string", "example": "Deposit via API"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the request was successful",
+            "example": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of the response",
+            "example": "2024-01-15T10:30:00Z"
+          }
+        },
+        "required": ["success", "timestamp"]
+      },
+      "ErrorResponse": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ApiResponse"},
+          {
+            "type": "object",
+            "properties": {
+              "success": {"type": "boolean", "example": false},
+              "error": {
+                "type": "string",
+                "description": "Error message describing what went wrong",
+                "example": "Invalid request parameters"
+              }
+            },
+            "required": ["error"]
+          }
+        ]
+      },
+      "ConnectRequest": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "description": "MT5 server address and port",
+            "example": "demo.mt5server.com:443"
+          },
+          "login": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Manager login ID (not regular trader login)",
+            "example": 12345
+          },
+          "password": {
+            "type": "string",
+            "description": "Manager password",
+            "example": "your-manager-password",
+            "format": "password"
+          }
+        },
+        "required": ["server", "login", "password"]
+      },
+      "BalanceRequest": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "integer",
+            "format": "int64",
+            "description": "User login ID for the balance operation",
+            "example": 67890
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "description": "Amount to add (positive) or subtract (negative)",
+            "example": 1000.0
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment for the balance operation",
+            "example": "API deposit",
+            "maxLength": 255
+          },
+          "type": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Operation type (2 = balance operation)",
+            "example": 2,
+            "default": 2
+          }
+        },
+        "required": ["login", "amount"]
+      },
+      "UserInfo": {
+        "type": "object",
+        "properties": {
+          "login": {"type": "integer", "format": "int64", "example": 67890},
+          "name": {"type": "string", "example": "John Doe"},
+          "group": {"type": "string", "example": "demo"},
+          "email": {"type": "string", "format": "email", "example": "john.doe@example.com"},
+          "country": {"type": "string", "example": "United States"},
+          "city": {"type": "string", "example": "New York"},
+          "state": {"type": "string", "example": "NY"},
+          "zipcode": {"type": "string", "example": "10001"},
+          "address": {"type": "string", "example": "123 Main St"},
+          "phone": {"type": "string", "example": "+1-555-123-4567"},
+          "comment": {"type": "string", "example": "VIP client"},
+          "registration": {"type": "string", "format": "date-time", "example": "2024-01-01T00:00:00Z"},
+          "last_access": {"type": "string", "format": "date-time", "example": "2024-01-15T09:30:00Z"},
+          "leverage": {"type": "integer", "format": "int32", "example": 100},
+          "rights": {"type": "integer", "format": "int32", "example": 255}
+        }
+      },
+      "AccountInfo": {
+        "type": "object",
+        "properties": {
+          "login": {"type": "integer", "format": "int64", "example": 67890},
+          "balance": {"type": "number", "format": "double", "example": 10000.0},
+          "credit": {"type": "number", "format": "double", "example": 0.0},
+          "margin": {"type": "number", "format": "double", "example": 500.0},
+          "margin_free": {"type": "number", "format": "double", "example": 9500.0},
+          "margin_level": {"type": "number", "format": "double", "example": 2000.0},
+          "margin_so_call": {"type": "number", "format": "double", "example": 100.0},
+          "margin_so_so": {"type": "number", "format": "double", "example": 50.0},
+          "profit": {"type": "number", "format": "double", "example": 150.0},
+          "storage": {"type": "number", "format": "double", "example": -5.0},
+          "commission": {"type": "number", "format": "double", "example": -2.0},
+          "floating": {"type": "number", "format": "double", "example": 150.0},
+          "equity": {"type": "number", "format": "double", "example": 10150.0},
+          "currency": {"type": "string", "example": "USD"},
+          "currency_digits": {"type": "integer", "format": "int32", "example": 2}
+        }
+      },
+      "Deal": {
+        "type": "object",
+        "properties": {
+          "deal_id": {"type": "integer", "format": "int64", "example": 123456789},
+          "login": {"type": "integer", "format": "int64", "example": 67890},
+          "symbol": {"type": "string", "example": "EURUSD"},
+          "action": {"type": "string", "example": "Buy", "enum": ["Buy", "Sell", "Balance", "Credit"]},
+          "volume": {"type": "number", "format": "double", "example": 0.1},
+          "price": {"type": "number", "format": "double", "example": 1.0950},
+          "profit": {"type": "number", "format": "double", "example": 15.0},
+          "commission": {"type": "number", "format": "double", "example": -0.5},
+          "swap": {"type": "number", "format": "double", "example": 0.0},
+          "time": {"type": "string", "format": "date-time", "example": "2024-01-15T10:30:00Z"},
+          "comment": {"type": "string", "example": "Market order"}
+        }
+      }
+    }
+  }
+}
