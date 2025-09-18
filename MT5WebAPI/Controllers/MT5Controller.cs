@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using MT5ManagerAPI;
 using MT5WebAPI.Models;
 using Newtonsoft.Json;
@@ -203,9 +204,9 @@ namespace MT5WebAPI.Controllers
                         .ToList(),
                     activity_stats = new
                     {
-                        active_today = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days == 0),
-                        active_week = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days <= 7),
-                        active_month = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days <= 30)
+                        active_today = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days == 0).Count(),
+                        active_week = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days <= 7).Count(),
+                        active_month = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days <= 30).Count()
                     }
                 };
                 
