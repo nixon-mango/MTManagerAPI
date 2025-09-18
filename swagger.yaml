@@ -1128,7 +1128,18 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
-      description: API key for authentication (if implemented)
+      description: |
+        API key for authentication. Required when security is enabled.
+        
+        To enable security:
+        1. Generate a key: `MT5WebAPI.exe --generate-key`
+        2. Add key to App.config: `<add key="ApiKeys" value="YOUR_KEY" />`
+        3. Enable security: `<add key="RequireApiKey" value="true" />`
+        4. Restart server
+        
+        Usage:
+        - Header: `X-API-Key: your-api-key-here`
+        - Query param: `?api_key=your-api-key-here`
 
   examples:
     SuccessfulConnection:
@@ -1185,6 +1196,5 @@ components:
           currency_digits: 2
         timestamp: "2024-01-15T10:30:00Z"
 
-# Security (if implemented)
-# security:
-#   - ApiKeyAuth: []
+security:
+  - ApiKeyAuth: []

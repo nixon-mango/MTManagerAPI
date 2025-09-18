@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using MT5WebAPI.Controllers;
+using MT5WebAPI.Models;
 using Newtonsoft.Json;
 
 namespace MT5WebAPI
@@ -82,6 +83,24 @@ namespace MT5WebAPI
                 string method = request.HttpMethod.ToUpper();
 
                 Console.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {method} {path}");
+
+                // Authentication check
+                var authResult = AuthenticateRequest(request);
+                if (!authResult.IsAuthenticated)
+                {
+                    response.StatusCode = 401;
+                    responseText = JsonConvert.SerializeObject(new { 
+                        success = false, 
+                        error = authResult.ErrorMessage,
+                        timestamp = DateTime.UtcNow
+                    });
+                    
+                    byte[] authErrorBuffer = Encoding.UTF8.GetBytes(responseText);
+                    response.ContentLength64 = authErrorBuffer.Length;
+                    response.OutputStream.Write(authErrorBuffer, 0, authErrorBuffer.Length);
+                    response.Close();
+                    return;
+                }
 
                 try
                 {
@@ -208,6 +227,63 @@ namespace MT5WebAPI
                 }
             }
             return result;
+        }
+
+        private AuthenticationResult AuthenticateRequest(HttpListenerRequest request)
+        {
+            var config = SecurityConfig.Instance;
+            
+            // If API key authentication is not required, allow all requests
+            if (!config.RequireApiKey)
+            {
+                return AuthenticationResult.Success(null);
+            }
+
+            // Check for API key in headers
+            string apiKey = request.Headers[config.ApiKeyHeader];
+            
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                // Also check query parameter as fallback
+                var queryParams = ParseQueryString(request.Url.Query);
+                apiKey = queryParams.ContainsKey("api_key") ? queryParams["api_key"] : null;
+            }
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Missing API key from {request.RemoteEndPoint}");
+                }
+                return AuthenticationResult.Failure($"Missing API key. Include '{config.ApiKeyHeader}' header or 'api_key' query parameter.");
+            }
+
+            if (!config.IsValidApiKey(apiKey))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Invalid API key from {request.RemoteEndPoint}");
+                }
+                return AuthenticationResult.Failure("Invalid API key.");
+            }
+
+            // Check origin if configured
+            string origin = request.Headers["Origin"];
+            if (!config.IsOriginAllowed(origin))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Origin not allowed: {origin} from {request.RemoteEndPoint}");
+                }
+                return AuthenticationResult.Failure("Origin not allowed.");
+            }
+
+            if (config.LogSecurityEvents)
+            {
+                Console.WriteLine($"✅ Authentication successful from {request.RemoteEndPoint}");
+            }
+
+            return AuthenticationResult.Success(apiKey);
         }
     }
 }
