@@ -35,15 +35,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="MetaQuotes.MT5CommonAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5CommonAPI.dll</HintPath>
+      <HintPath>bin\Debug\MetaQuotes.MT5CommonAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="MetaQuotes.MT5GatewayAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5GatewayAPI.dll</HintPath>
+      <HintPath>bin\Debug\MetaQuotes.MT5GatewayAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="MetaQuotes.MT5ManagerAPI">
-      <HintPath>bin\Debug\MetaQuotes.MT5ManagerAPI.dll</HintPath>
+      <HintPath>bin\Debug\MetaQuotes.MT5ManagerAPI64.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="MetaQuotes.MT5WebAPI">
