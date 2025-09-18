@@ -15,8 +15,8 @@ if not exist %MSBUILD_PATH% (
 echo Using MSBuild at: %MSBUILD_PATH%
 echo.
 
-REM Build the solution
-%MSBUILD_PATH% MT5ManagerAPI.sln /p:Configuration=Debug /p:Platform="Any CPU" /verbosity:minimal
+REM Build the solution with x64 platform
+%MSBUILD_PATH% MT5ManagerAPI.sln /p:Configuration=Debug /p:Platform="Any CPU" /p:PlatformTarget=x64 /verbosity:minimal
 
 if %ERRORLEVEL% equ 0 (
     echo.
