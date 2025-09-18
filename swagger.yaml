@@ -254,6 +254,63 @@ paths:
                     error: "Failed to retrieve users from one or more groups"
                     timestamp: "2024-01-15T10:30:00Z"
 
+  /api/users/real:
+    get:
+      tags:
+        - Users
+      summary: Get all real users
+      description: |
+        Retrieves all users from your server's specific real groups:
+        - real\Executive
+        - real\Vipin Zero 1000
+        - real\NORMAL
+        
+        This endpoint is optimized for your server's group structure and will only query the groups that actually exist on your server.
+      operationId: getAllRealUsers
+      responses:
+        '200':
+          description: All real users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserInfo'
+              examples:
+                real_users_response:
+                  summary: Successful response with real users
+                  value:
+                    success: true
+                    data:
+                      - login: 67890
+                        name: "John Executive"
+                        group: "real\\Executive"
+                        email: "john@example.com"
+                        country: "United States"
+                        registration: "2024-01-01T00:00:00Z"
+                        last_access: "2024-01-15T09:30:00Z"
+                        leverage: 100
+                      - login: 67891
+                        name: "Jane Vipin"
+                        group: "real\\Vipin Zero 1000"
+                        email: "jane@example.com"
+                        country: "Canada"
+                        registration: "2024-01-02T00:00:00Z"
+                        last_access: "2024-01-15T10:15:00Z"
+                        leverage: 1000
+                    timestamp: "2024-01-15T10:30:00Z"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/user/{login}:
     get:
       tags:

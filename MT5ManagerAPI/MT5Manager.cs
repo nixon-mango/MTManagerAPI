@@ -239,8 +239,13 @@ namespace MT5Manager
         //+------------------------------------------------------------------+
         public System.Collections.Generic.List<CIMTUserArray> GetUsersFromCommonGroups()
         {
-            // Common MT5 group names to try
+            // Your server's actual group names + common fallbacks
             string[] commonGroups = { 
+                // Your actual groups
+                "real\\Executive",
+                "real\\Vipin Zero 1000", 
+                "real\\NORMAL",
+                // Common fallbacks
                 "demo", "real", "vip", "standard", "premium", "cent", "micro", 
                 "manager", "admin", "archive", "test", "default", "main",
                 "retail", "professional", "islamic", "swap_free", "ecn"

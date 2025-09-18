@@ -73,15 +73,18 @@ namespace MT5ConsoleApp
                                 GetAllUsers(api);
                                 break;
                             case "4":
-                                GetUsersInGroup(api);
+                                GetAllRealUsers(api);
                                 break;
                             case "5":
-                                GetUserGroup(api);
+                                GetUsersInGroup(api);
                                 break;
                             case "6":
-                                PerformBalanceOperation(api);
+                                GetUserGroup(api);
                                 break;
                             case "7":
+                                PerformBalanceOperation(api);
+                                break;
+                            case "8":
                                 GetUserDeals(api);
                                 break;
                             case "0":
@@ -124,11 +127,12 @@ namespace MT5ConsoleApp
             Console.WriteLine("=== MT5 Manager API Menu ===");
             Console.WriteLine("1. Get User Information");
             Console.WriteLine("2. Get Account Information");
-            Console.WriteLine("3. Get All Users");
-            Console.WriteLine("4. Get Users in Group");
-            Console.WriteLine("5. Get User Group");
-            Console.WriteLine("6. Perform Balance Operation");
-            Console.WriteLine("7. Get User Deals");
+            Console.WriteLine("3. Get All Users (Discovery)");
+            Console.WriteLine("4. Get All Real Users (Your Groups)");
+            Console.WriteLine("5. Get Users in Group");
+            Console.WriteLine("6. Get User Group");
+            Console.WriteLine("7. Perform Balance Operation");
+            Console.WriteLine("8. Get User Deals");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option: ");
@@ -246,6 +250,72 @@ namespace MT5ConsoleApp
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error getting all users: {ex.Message}");
+            }
+        }
+
+        static void GetAllRealUsers(MT5ApiWrapper api)
+        {
+            try
+            {
+                Console.WriteLine("\n=== Getting All Real Users ===");
+                Console.WriteLine("Checking your server's real groups:");
+                Console.WriteLine("  - real\\Executive");
+                Console.WriteLine("  - real\\Vipin Zero 1000");
+                Console.WriteLine("  - real\\NORMAL");
+                Console.WriteLine();
+                
+                var users = api.GetAllRealUsers();
+                
+                Console.WriteLine($"✓ Retrieved {users.Count} real users total");
+                
+                if (users.Count > 0)
+                {
+                    Console.WriteLine("\n📊 Summary by Group:");
+                    var groupSummary = users.GroupBy(u => u.Group)
+                                           .OrderByDescending(g => g.Count());
+                    
+                    foreach (var group in groupSummary)
+                    {
+                        Console.WriteLine($"   {group.Key}: {group.Count()} users");
+                    }
+                    
+                    Console.WriteLine($"\n📋 Sample Users (showing first 10):");
+                    Console.WriteLine("Login       | Name                 | Group                | Country");
+                    Console.WriteLine("------------|----------------------|----------------------|------------------");
+                    
+                    foreach (var user in users.Take(10))
+                    {
+                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-20} | {user.Country}");
+                    }
+                    
+                    if (users.Count > 10)
+                    {
+                        Console.WriteLine($"... and {users.Count - 10} more users");
+                    }
+                    
+                    // Activity analysis
+                    var now = DateTime.Now;
+                    var activeToday = users.Count(u => (now - u.LastAccess).Days == 0);
+                    var activeWeek = users.Count(u => (now - u.LastAccess).Days <= 7);
+                    var activeMonth = users.Count(u => (now - u.LastAccess).Days <= 30);
+                    
+                    Console.WriteLine($"\n📈 Activity Summary:");
+                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / users.Count:F1}%)");
+                }
+                else
+                {
+                    Console.WriteLine("No users found in real groups.");
+                    Console.WriteLine("💡 This might mean:");
+                    Console.WriteLine("   - The groups don't exist on your server");
+                    Console.WriteLine("   - Your manager account doesn't have access to these groups");
+                    Console.WriteLine("   - The group names have different formatting");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting real users: {ex.Message}");
             }
         }
 

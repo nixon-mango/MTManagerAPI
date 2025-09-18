@@ -172,6 +172,16 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
+        /// Get all users from your server's real groups
+        /// </summary>
+        /// <returns>List of all users from real groups</returns>
+        public List<UserInfo> GetAllRealUsers()
+        {
+            string[] realGroups = { "real\\Executive", "real\\Vipin Zero 1000", "real\\NORMAL" };
+            return GetAllUsers(realGroups);
+        }
+
+        /// <summary>
         /// Get all users from specified groups
         /// </summary>
         /// <param name="groupNames">Array of group names to query. If null, uses common group names.</param>
