@@ -239,21 +239,70 @@ namespace MT5Manager
         //+------------------------------------------------------------------+
         public System.Collections.Generic.List<CIMTUserArray> GetUsersFromCommonGroups()
         {
-            // Your server's actual group names + common fallbacks
-            string[] commonGroups = { 
-                // Your actual groups
-                "real\\Executive",
-                "real\\Vipin Zero 1000", 
-                "real\\NORMAL",
-                // Common fallbacks
-                "demo", "real", "vip", "standard", "premium", "cent", "micro", 
-                "manager", "admin", "archive", "test", "default", "main",
-                "retail", "professional", "islamic", "swap_free", "ecn"
+            // Your server's actual group names (complete list)
+            string[] actualGroups = { 
+                // Basic groups
+                "abc", "coverage", "preliminary", "real",
+                
+                // Demo groups
+                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                "demo\\PRO", "demo\\PS GOLD", "demo\\Ruble", "demo\\SPREAD 19", "demo\\VIP", 
+                "demo\\forex.hedged", "demo\\forex.hedged1", "demo\\gold", "demo\\gold souq", 
+                "demo\\goldnolev", "demo\\gsnew15 test", "demo\\no lev", "demo\\stock",
+                
+                // Manager groups
+                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master",
+                
+                // Real groups (your main groups)
+                "real\\20spread", "real\\50 lev", "real\\ALLWIN CENT COVER", "real\\ALLWIN CENT GIVEUP", 
+                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\ALLWIN PREMIUM 1 B", 
+                "real\\ALLWIN PREMIUM 1 test", "real\\ALLWIN PREMIUM 1A", "real\\ALLWIN PREMIUM Hedging strgy", 
+                "real\\ALLWIN PREMIUM netting cents", "real\\ALLWIN PREMIUM netting usd", "real\\ALLWIN STD 1", 
+                "real\\ALLWIN Test", "real\\ALLWIN VIP 1", "real\\ARAFAT NEW", "real\\Arafat gold", 
+                "real\\B2B", "real\\CENT GIVEUP", "real\\CENT INGT", "real\\CENT INGT TEST", 
+                "real\\CENT INGT new", "real\\CENT_EA", "real\\Copy trades", "real\\Crown 25 spread", 
+                "real\\Crown 30 spread", "real\\Crown 35 spread", "real\\Crown 40 spread", 
+                "real\\Crown 45 spread", "real\\Crown 50 spread", "real\\EA B2B", "real\\EA TEST", 
+                "real\\EA TEST 2", "real\\EA TEST 3", "real\\Ea covering", "real\\Executive", 
+                "real\\Executive 25", "real\\Executive Swap", "real\\Executive Swap+", "real\\Executive+KGM", 
+                "real\\Faizal 1", "real\\Faizal 122", "real\\Faizal 4", "real\\Faizal 5", 
+                "real\\GOLD 1", "real\\GOLD 2", "real\\GOLD EA", "real\\GRAMIN JEWELLERY", 
+                "real\\Gld INGT", "real\\Gld INGT DEMO", "real\\Gld OZ SPREAD 50", "real\\Gold26", 
+                "real\\INDIA", "real\\INGT NRML", "real\\JIBIN IB", "real\\LONG TERM", 
+                "real\\MSTR IB", "real\\Metal20Spread", "real\\NG", "real\\NORMAL", 
+                "real\\NORMAL 2", "real\\NORMAL 60spread", "real\\NORMAL STOCK", "real\\NORMAL Scalpers", 
+                "real\\NORMAL slip", "real\\Naseem", "real\\Nijas", "real\\Niyaz", 
+                "real\\Normal Floating", "real\\PIP 40", "real\\PRO A", "real\\PRO A1", 
+                "real\\PRO B", "real\\PRO new", "real\\Prakash", "real\\SPREAD 15", 
+                "real\\SPREAD 19", "real\\STD A", "real\\STD B", "real\\STOCK 20", 
+                "real\\STOCK 20 Netting", "real\\SUB IB", "real\\SWAP AFTER 10 DAYS", 
+                "real\\Saiful Executive", "real\\Saiful PRO", "real\\Saiful VIP", "real\\Soni Ji Bullion", 
+                "real\\Standard", "real\\Stocks 1", "real\\Stocks 1 (100 stop)", "real\\Stocks 10 lev", 
+                "real\\Stocks 20 lev", "real\\Stocks 4 lev", "real\\Stocks 5 lev", "real\\TEST", 
+                "real\\TEST STOCK 20", "real\\TEST Z", "real\\TradersArena25", "real\\UAE", 
+                "real\\VIP A", "real\\VIP B", "real\\VIPIN 18 Spread", "real\\VIPIN KGM", 
+                "real\\Vinayak Floating", "real\\Vipin 18", "real\\Vipin 18 Test", "real\\Vipin New", 
+                "real\\Vipin Zero", "real\\Vipin Zero 1000", "real\\Vipin Zero 2500", 
+                "real\\Vipin Zero 2500 test", "real\\Vipin Zero 2500(400 lev)", "real\\Vipin no lev", 
+                "real\\amanawafi", "real\\awafispread45", "real\\awafispread60", "real\\faisal 8", 
+                "real\\faisal7", "real\\faizal 6", "real\\falah saadi", "real\\falah saadi 100spread", 
+                "real\\falah saadi 100spread&lev", "real\\falah saadi 100spread200lev", 
+                "real\\falah saadi 200spread100lev", "real\\falah saadi 200spread200lev", 
+                "real\\falah saadi 50spread200lev", "real\\falah saadi 55spread200lev", 
+                "real\\falah saadi 60spread200lev", "real\\falah saadi new", "real\\falah saadi normal", 
+                "real\\goldlev20", "real\\goldlev20 Spread 30+", "real\\goldnolev", "real\\gs01", 
+                "real\\gsnew", "real\\gsnew15", "real\\gsnew15 test", "real\\gsnew6", 
+                "real\\ibrahim", "real\\ibrahim Netting", "real\\lev20", "real\\manualtraders", 
+                "real\\margin 4", "real\\margin 5", "real\\newtest", "real\\niyas80spred", 
+                "real\\raw\\raw WL", "real\\real", "real\\shahala", "real\\shameem", 
+                "real\\shameem 2", "real\\shameem swap", "real\\stock0lev", "real\\stock0lev Executive", 
+                "real\\stock0levTest", "real\\test 1", "real\\test 1265", "real\\test 2", 
+                "real\\tt only", "real\\yoosuf 50 spread", "real\\yoosuf Floating", "real\\yoosuf New"
             };
 
             var userArrays = new System.Collections.Generic.List<CIMTUserArray>();
             
-            foreach (string groupName in commonGroups)
+            foreach (string groupName in actualGroups)
             {
                 try
                 {

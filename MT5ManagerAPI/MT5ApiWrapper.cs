@@ -177,8 +177,53 @@ namespace MT5ManagerAPI
         /// <returns>List of all users from real groups</returns>
         public List<UserInfo> GetAllRealUsers()
         {
-            string[] realGroups = { "real\\Executive", "real\\Vipin Zero 1000", "real\\NORMAL" };
+            // Your server's most important real groups
+            string[] realGroups = { 
+                "real", "real\\Executive", "real\\NORMAL", "real\\Vipin Zero 1000",
+                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\VIP A", "real\\VIP B",
+                "real\\PRO A", "real\\PRO B", "real\\Standard", "real\\Executive 25",
+                "real\\Vipin Zero", "real\\Vipin Zero 2500", "real\\GOLD 1", "real\\GOLD 2"
+            };
             return GetAllUsers(realGroups);
+        }
+
+        /// <summary>
+        /// Get all users from demo groups
+        /// </summary>
+        /// <returns>List of all users from demo groups</returns>
+        public List<UserInfo> GetAllDemoUsers()
+        {
+            string[] demoGroups = { 
+                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
+                "demo\\stock", "demo\\SPREAD 19"
+            };
+            return GetAllUsers(demoGroups);
+        }
+
+        /// <summary>
+        /// Get all VIP users from various VIP groups
+        /// </summary>
+        /// <returns>List of all VIP users</returns>
+        public List<UserInfo> GetAllVIPUsers()
+        {
+            string[] vipGroups = { 
+                "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
+                "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
+            };
+            return GetAllUsers(vipGroups);
+        }
+
+        /// <summary>
+        /// Get all users from manager groups
+        /// </summary>
+        /// <returns>List of all manager users</returns>
+        public List<UserInfo> GetAllManagerUsers()
+        {
+            string[] managerGroups = { 
+                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
+            };
+            return GetAllUsers(managerGroups);
         }
 
         /// <summary>

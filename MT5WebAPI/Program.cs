@@ -78,8 +78,11 @@ namespace MT5WebAPI
                 Console.WriteLine("Available endpoints:");
                 Console.WriteLine("  POST /api/connect        - Connect to MT5 server");
                 Console.WriteLine("  POST /api/disconnect     - Disconnect from MT5 server");
-                Console.WriteLine("  GET  /api/users          - Get all users (enhanced discovery)");
-                Console.WriteLine("  GET  /api/users/real     - Get users from your real groups");
+                Console.WriteLine("  GET  /api/users          - Get all users (complete discovery)");
+                Console.WriteLine("  GET  /api/users/real     - Get users from real groups");
+                Console.WriteLine("  GET  /api/users/demo     - Get users from demo groups");
+                Console.WriteLine("  GET  /api/users/vip      - Get users from VIP groups");
+                Console.WriteLine("  GET  /api/users/managers - Get users from manager groups");
                 Console.WriteLine("  GET  /api/users/stats    - Get user discovery statistics");
                 Console.WriteLine("  GET  /api/user/{login}   - Get user information");
                 Console.WriteLine("  GET  /api/account/{login} - Get account information");

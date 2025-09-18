@@ -145,6 +145,18 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.GetAllRealUsers();
                     }
+                    else if (path == "/api/users/demo" && method == "GET")
+                    {
+                        responseText = _controller.GetAllDemoUsers();
+                    }
+                    else if (path == "/api/users/vip" && method == "GET")
+                    {
+                        responseText = _controller.GetAllVIPUsers();
+                    }
+                    else if (path == "/api/users/managers" && method == "GET")
+                    {
+                        responseText = _controller.GetAllManagerUsers();
+                    }
                     else if (path == "/api/users/stats" && method == "GET")
                     {
                         responseText = _controller.GetUserDiscoveryStats();

@@ -177,6 +177,45 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetAllDemoUsers()
+        {
+            try
+            {
+                var users = _api.GetAllDemoUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all demo users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllVIPUsers()
+        {
+            try
+            {
+                var users = _api.GetAllVIPUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all VIP users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllManagerUsers()
+        {
+            try
+            {
+                var users = _api.GetAllManagerUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all manager users error: {ex.Message}"));
+            }
+        }
+
         public string GetUserDiscoveryStats()
         {
             try
