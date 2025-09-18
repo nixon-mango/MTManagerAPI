@@ -598,6 +598,152 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
+        /// Get user positions
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>List of user positions</returns>
+        public List<PositionInfo> GetUserPositions(ulong login)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            try
+            {
+                CIMTPositionArray positions;
+                if (!_manager.GetUserPositions(out positions, login))
+                    return new List<PositionInfo>();
+
+                var result = new List<PositionInfo>();
+                for (uint i = 0; i < positions.Total(); i++)
+                {
+                    var position = positions.Next(i);
+                    if (position != null)
+                    {
+                        result.Add(new PositionInfo
+                        {
+                            PositionId = position.Position(),
+                            Login = position.Login(),
+                            Symbol = position.Symbol(),
+                            Action = position.Action().ToString(),
+                            Volume = position.Volume(),
+                            PriceOpen = position.PriceOpen(),
+                            PriceCurrent = position.PriceCurrent(),
+                            Profit = position.Profit(),
+                            Storage = position.Storage(),
+                            Commission = position.Commission(),
+                            TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
+                            TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
+                            Comment = position.Comment(),
+                            ExternalId = position.ExternalID(),
+                            Reason = position.Reason().ToString(),
+                            Digits = position.Digits(),
+                            DigitsCurrency = position.DigitsCurrency(),
+                            ContractSize = position.ContractSize(),
+                            RateProfit = position.RateProfit(),
+                            RateMargin = position.RateMargin(),
+                            ExpertId = position.ExpertID(),
+                            ExpertPositionId = position.ExpertPositionID()
+                        });
+                    }
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get positions for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get position summary for a user
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>Position summary</returns>
+        public PositionSummary GetUserPositionSummary(ulong login)
+        {
+            try
+            {
+                var positions = GetUserPositions(login);
+                
+                return new PositionSummary
+                {
+                    Login = login,
+                    TotalPositions = positions.Count,
+                    BuyPositions = positions.Count(p => p.Action.Contains("Buy")),
+                    SellPositions = positions.Count(p => p.Action.Contains("Sell")),
+                    TotalVolume = positions.Sum(p => p.Volume),
+                    TotalProfit = positions.Sum(p => p.Profit),
+                    Symbols = positions.Select(p => p.Symbol).Distinct().ToArray(),
+                    LastUpdate = DateTime.Now
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get position summary for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get positions for all users in a group
+        /// </summary>
+        /// <param name="groupName">Group name</param>
+        /// <returns>List of all positions in the group</returns>
+        public List<PositionInfo> GetGroupPositions(string groupName)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            if (string.IsNullOrEmpty(groupName))
+                throw new ArgumentException("Group name cannot be empty", nameof(groupName));
+
+            try
+            {
+                CIMTPositionArray positions;
+                if (!_manager.GetGroupPositions(out positions, groupName))
+                    return new List<PositionInfo>();
+
+                var result = new List<PositionInfo>();
+                for (uint i = 0; i < positions.Total(); i++)
+                {
+                    var position = positions.Next(i);
+                    if (position != null)
+                    {
+                        result.Add(new PositionInfo
+                        {
+                            PositionId = position.Position(),
+                            Login = position.Login(),
+                            Symbol = position.Symbol(),
+                            Action = position.Action().ToString(),
+                            Volume = position.Volume(),
+                            PriceOpen = position.PriceOpen(),
+                            PriceCurrent = position.PriceCurrent(),
+                            Profit = position.Profit(),
+                            Storage = position.Storage(),
+                            Commission = position.Commission(),
+                            TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
+                            TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
+                            Comment = position.Comment(),
+                            ExternalId = position.ExternalID(),
+                            Reason = position.Reason().ToString(),
+                            Digits = position.Digits(),
+                            DigitsCurrency = position.DigitsCurrency(),
+                            ContractSize = position.ContractSize(),
+                            RateProfit = position.RateProfit(),
+                            RateMargin = position.RateMargin(),
+                            ExpertId = position.ExpertID(),
+                            ExpertPositionId = position.ExpertPositionID()
+                        });
+                    }
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get positions for group {groupName}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Dispose resources
         /// </summary>
         public void Dispose()

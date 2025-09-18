@@ -383,6 +383,54 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetUserPositions(string loginStr)
+        {
+            try
+            {
+                if (!ulong.TryParse(loginStr, out ulong login))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid login format"));
+
+                var positions = _api.GetUserPositions(login);
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.PositionInfo>>.CreateSuccess(positions));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get user positions error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserPositionSummary(string loginStr)
+        {
+            try
+            {
+                if (!ulong.TryParse(loginStr, out ulong login))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid login format"));
+
+                var summary = _api.GetUserPositionSummary(login);
+                return JsonConvert.SerializeObject(ApiResponse<MT5ManagerAPI.Models.PositionSummary>.CreateSuccess(summary));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get user position summary error: {ex.Message}"));
+            }
+        }
+
+        public string GetGroupPositions(string groupName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(groupName))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Group name is required"));
+
+                var positions = _api.GetGroupPositions(groupName);
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.PositionInfo>>.CreateSuccess(positions));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get group positions error: {ex.Message}"));
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);

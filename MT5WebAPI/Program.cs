@@ -88,6 +88,9 @@ namespace MT5WebAPI
                 Console.WriteLine("  GET  /api/account/{login} - Get account information");
                 Console.WriteLine("  GET  /api/group/{name}/users - Get users in group");
                 Console.WriteLine("  GET  /api/user/{login}/group - Get user's group");
+                Console.WriteLine("  GET  /api/user/{login}/positions - Get user positions");
+                Console.WriteLine("  GET  /api/user/{login}/positions/summary - Get user position summary");
+                Console.WriteLine("  GET  /api/group/{name}/positions - Get group positions");
                 Console.WriteLine("  POST /api/balance        - Perform balance operation");
                 Console.WriteLine("  GET  /api/user/{login}/deals - Get user deals");
                 Console.WriteLine("  GET  /api/status         - Get connection status");

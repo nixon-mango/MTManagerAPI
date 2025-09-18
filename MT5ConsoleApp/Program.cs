@@ -132,7 +132,8 @@ namespace MT5ConsoleApp
             Console.WriteLine("5. Get Users in Group");
             Console.WriteLine("6. Get User Group");
             Console.WriteLine("7. Perform Balance Operation");
-            Console.WriteLine("8. Get User Deals");
+            Console.WriteLine("8. Get User Positions");
+            Console.WriteLine("9. Get User Deals");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option: ");
@@ -432,6 +433,81 @@ namespace MT5ConsoleApp
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void GetUserPositions(MT5ApiWrapper api)
+        {
+            Console.Write("Enter user login: ");
+            if (!ulong.TryParse(Console.ReadLine(), out ulong userLogin))
+            {
+                Console.WriteLine("Invalid login format");
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine($"\n=== Getting Positions for User {userLogin} ===");
+                
+                // Get position summary first
+                var summary = api.GetUserPositionSummary(userLogin);
+                
+                Console.WriteLine($"📊 Position Summary:");
+                Console.WriteLine($"   Total positions: {summary.TotalPositions}");
+                Console.WriteLine($"   Buy positions: {summary.BuyPositions}");
+                Console.WriteLine($"   Sell positions: {summary.SellPositions}");
+                Console.WriteLine($"   Total volume: {summary.TotalVolume:F2} lots");
+                Console.WriteLine($"   Total profit: {summary.TotalProfit:F2}");
+                Console.WriteLine($"   Symbols: {string.Join(", ", summary.Symbols)}");
+                
+                if (summary.TotalPositions > 0)
+                {
+                    // Get detailed positions
+                    var positions = api.GetUserPositions(userLogin);
+                    
+                    Console.WriteLine($"\n📋 Detailed Positions:");
+                    Console.WriteLine("Symbol    | Action | Volume | Open Price | Current Price | Profit   | Time Created");
+                    Console.WriteLine("----------|--------|--------|------------|---------------|----------|------------------");
+                    
+                    foreach (var position in positions)
+                    {
+                        Console.WriteLine($"{position.Symbol,-9} | {position.Action,-6} | {position.Volume,6:F2} | {position.PriceOpen,10:F5} | {position.PriceCurrent,13:F5} | {position.Profit,8:F2} | {position.TimeCreate:MM-dd HH:mm}");
+                    }
+                    
+                    // Risk analysis
+                    var profitablePositions = positions.Count(p => p.Profit > 0);
+                    var losingPositions = positions.Count(p => p.Profit < 0);
+                    var breakEvenPositions = positions.Count(p => p.Profit == 0);
+                    
+                    Console.WriteLine($"\n📈 Risk Analysis:");
+                    Console.WriteLine($"   Profitable: {profitablePositions} ({profitablePositions * 100.0 / summary.TotalPositions:F1}%)");
+                    Console.WriteLine($"   Losing: {losingPositions} ({losingPositions * 100.0 / summary.TotalPositions:F1}%)");
+                    Console.WriteLine($"   Break-even: {breakEvenPositions} ({breakEvenPositions * 100.0 / summary.TotalPositions:F1}%)");
+                    
+                    // Symbol exposure
+                    var symbolExposure = positions.GroupBy(p => p.Symbol)
+                        .Select(g => new { 
+                            Symbol = g.Key, 
+                            Count = g.Count(), 
+                            Volume = g.Sum(p => p.Volume),
+                            Profit = g.Sum(p => p.Profit)
+                        })
+                        .OrderByDescending(s => Math.Abs(s.Volume));
+                    
+                    Console.WriteLine($"\n🎯 Symbol Exposure:");
+                    foreach (var exposure in symbolExposure)
+                    {
+                        Console.WriteLine($"   {exposure.Symbol}: {exposure.Count} positions, {exposure.Volume:F2} lots, P&L: {exposure.Profit:F2}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("\n✅ No open positions for this user.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting positions: {ex.Message}");
             }
         }
 

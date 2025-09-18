@@ -22,6 +22,7 @@ namespace MT5Manager
         CIMTUser m_user = null;
         CIMTUserArray m_users = null;
         CIMTAccount m_account = null;
+        CIMTPositionArray m_positions = null;
         //+------------------------------------------------------------------+
         //| Constructor                                                      |
         //+------------------------------------------------------------------+
@@ -86,6 +87,13 @@ namespace MT5Manager
                 System.Console.WriteLine("UserCreateAccount fail");
                 return (false);
             }
+            //--- create position array
+            if ((m_positions = m_manager.PositionCreateArray()) == null)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionCreateArray fail");
+                System.Console.WriteLine("PositionCreateArray fail");
+                return (false);
+            }
             //--- all right
             return (true);
         }
@@ -141,6 +149,11 @@ namespace MT5Manager
             {
                 m_account.Dispose();
                 m_account = null;
+            }
+            if (m_positions != null)
+            {
+                m_positions.Dispose();
+                m_positions = null;
             }
             SMTManagerAPIFactory.Shutdown();
         }
@@ -320,6 +333,56 @@ namespace MT5Manager
             }
             
             return userArrays;
+        }
+        //+------------------------------------------------------------------+
+        //| Get User Positions                                               |
+        //+------------------------------------------------------------------+
+        public bool GetUserPositions(out CIMTPositionArray positions, UInt64 login)
+        {
+            positions = null;
+            MTRetCode res = m_manager.PositionRequest(login, m_positions);
+            if (res != MTRetCode.MT_RET_OK)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequest fail({0})", res);
+                return (false);
+            }
+            //--- 
+            positions = m_positions;
+            return (true);
+        }
+        //+------------------------------------------------------------------+
+        //| Get All Positions (from all users in a group)                   |
+        //+------------------------------------------------------------------+
+        public bool GetGroupPositions(out CIMTPositionArray positions, string group)
+        {
+            positions = null;
+            MTRetCode res = m_manager.PositionRequestGroup(group, m_positions);
+            if (res != MTRetCode.MT_RET_OK)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequestGroup fail({0})", res);
+                return (false);
+            }
+            positions = m_positions;
+            return (true);
+        }
+        //+------------------------------------------------------------------+
+        //| Get Position by Symbol for User                                  |
+        //+------------------------------------------------------------------+
+        public bool GetUserPositionBySymbol(out CIMTPosition position, UInt64 login, string symbol)
+        {
+            position = null;
+            var pos = m_manager.PositionCreate();
+            if (pos == null) return false;
+            
+            MTRetCode res = m_manager.PositionRequestSymbol(login, symbol, pos);
+            if (res != MTRetCode.MT_RET_OK)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequestSymbol fail({0})", res);
+                pos.Dispose();
+                return (false);
+            }
+            position = pos;
+            return (true);
         }
     }
 }

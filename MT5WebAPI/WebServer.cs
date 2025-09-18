@@ -127,6 +127,16 @@ namespace MT5WebAPI
                         var queryParams = ParseQueryString(request.Url.Query);
                         responseText = _controller.GetUserDeals(loginStr, queryParams);
                     }
+                    else if (path.StartsWith("/api/user/") && path.EndsWith("/positions") && method == "GET")
+                    {
+                        string loginStr = ExtractFromPath(path, "/api/user/", "/positions");
+                        responseText = _controller.GetUserPositions(loginStr);
+                    }
+                    else if (path.StartsWith("/api/user/") && path.EndsWith("/positions/summary") && method == "GET")
+                    {
+                        string loginStr = ExtractFromPath(path, "/api/user/", "/positions/summary");
+                        responseText = _controller.GetUserPositionSummary(loginStr);
+                    }
                     else if (path.StartsWith("/api/user/") && method == "GET")
                     {
                         string loginStr = ExtractFromPath(path, "/api/user/", "");
@@ -165,6 +175,11 @@ namespace MT5WebAPI
                     {
                         string groupName = ExtractFromPath(path, "/api/group/", "/users");
                         responseText = _controller.GetUsersInGroup(groupName);
+                    }
+                    else if (path.StartsWith("/api/group/") && path.EndsWith("/positions") && method == "GET")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/group/", "/positions");
+                        responseText = _controller.GetGroupPositions(groupName);
                     }
                     else if (path == "/api/balance" && method == "POST")
                     {
