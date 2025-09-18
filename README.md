@@ -1,252 +1,224 @@
-# MT Manager APIを利用したC#サンプルコード（MT4・MT5）
+# MT Manager API - C# Sample Code (MT4 & MT5)
 
-ここで紹介しているアプリは、MetaQuotes社のMT Manager APIの使い方を理解するためのアプリです。
+A comprehensive C# wrapper library and sample applications for MetaQuotes MT4 and MT5 Manager APIs, providing modern, easy-to-use interfaces for broker management operations.
 
-MT Manager APIは、トレーダーのためのAPIではなく、ブローカーのためのAPIです。
+## 🚀 Quick Start
 
-そのため、トレーダーがMetaTraderにログインする際のサーバー名、ログイン、パスワードでは本アプリを使うことはできません。
+```bash
+# 1. Place your MT5 Manager API DLLs in the DLLs folder
+# 2. Run setup script
+setup-dlls.bat
 
-ご注意ください。
+# 3. Build the solution
+build.bat
 
-## MT4
-MT4のManager APIは、ネイティブDLLとしてMetaQuotes社から提供されているため、C#から呼び出す際は、DLLImportsを利用する必要があります。
+# 4. Test with console app
+MT5ConsoleApp\bin\Debug\MT5ConsoleApp.exe
+```
 
-しかし、GitHubに公開されていた、以下の.NETライブラリを利用することで、このネイティブDLLを.NETでかんたんに利用することが可能となります。
+## 📋 What's Included
 
-https://github.com/tamdestek/MetaTrader4.Manager.Wrapper
+- **🔧 MT5ManagerAPI**: Modern C# wrapper library with error handling
+- **💻 MT5ConsoleApp**: Interactive console application for testing
+- **🌐 MT5WebAPI**: REST API server for remote access
+- **📱 Windows Forms Apps**: Original MT4 and MT5 GUI applications
+- **📚 Comprehensive Documentation**: Setup guides and API reference
 
-## MT5
-MT5のManager APIは、ネイティブDLLと.NET DLLの2種類がMetaQuotes社から提供されています。
+## ⚠️ Important Notice
 
-.NET DLLは、ネイティブDLLのWrapperクラスのようです。
+**This is a BROKER API, not a TRADER API!**
 
-この.NET DLLは、GitHubにアップされていた、以下のものを利用させていただきました。
+The MT Manager API is designed for brokers to manage their MetaTrader servers, not for individual traders. You cannot use regular MetaTrader login credentials with this API. You need **Manager** account credentials provided by your broker or MetaTrader server administrator.
 
-https://github.com/sfissw
+## 🏗️ Project Structure
 
-## ユーザー情報の取得について
+```
+/workspace/
+├── MT5ManagerAPI/              # 🔧 Core API wrapper library
+│   ├── MT5Manager.cs           # Original manager class
+│   ├── MT5ApiWrapper.cs        # Modern wrapper with error handling
+│   └── Models/                 # Data models (UserInfo, AccountInfo)
+├── MT5ConsoleApp/              # 💻 Interactive console application
+├── MT5WebAPI/                  # 🌐 REST API server
+├── MT4/                        # 📱 MT4 Windows Forms application
+├── MT5/                        # 📱 MT5 Windows Forms application
+└── docs/                       # 📚 Documentation and playground
+```
 
-このアプリは、管理者ログインの方法と、ユーザー情報の取得の方法をロジック化しています。
+## 🔧 Core Features
 
-ユーザー情報の取得は、MT4とMT5とで違います。
+### MT4 Manager API
+- **Native DLL Wrapper**: Uses P23.MetaTrader4.Manager.Wrapper for easy .NET integration
+- **Bulk User Retrieval**: Get all users with a single `UsersRequest()` call
+- **Simple Architecture**: Straightforward API design
 
-### MT4
-MT4では、UsersRequest()メソッドを実行することで、すべてのユーザーのユーザー情報を取得することができます。
+### MT5 Manager API
+- **Modern .NET DLLs**: Direct integration with MetaQuotes .NET libraries
+- **Granular Control**: Get specific users or groups
+- **Rich Functionality**: Advanced account and trading operations
 
-### MT5
-MT5では、UserRequest()メソッドで、指定したユーザーのログインIDのユーザー情報を取得することができます。
+## 🚀 Usage Examples
 
-また、UserRequestArray()メソッドで、指定したグループに所属する複数のユーザーのユーザー情報を取得することができます。
+### Basic Connection and User Retrieval
 
-## MT4・MT5各々のメリットとデメリット
-MT4の場合、管理者のログイン情報さえわかれば、すべてのユーザーの情報を取得することができるが、MT5の場合、取得したいユーザーのグループ名が必要となります。
+```csharp
+using MT5ManagerAPI;
 
-一見、MT4の方が便利な気がしますが、非常に大量のデータが取得されるため、すべてのデータを取得するまでにそれなりに時間がかかります。
-
-MT5の場合、グループ名がわからないと、複数のユーザーを取得することができませんが、幸い、UserRequest()メソッドによって1人のユーザーが所属するグループ名を取得することもできるため、「グループ名の正式名はわからないけど、そのグループにはこのログインIDを持つユーザーがいることだけはわかっている」といったケースでには使えそうです。
-
-ただ正直、MT5のAPIの方が、使いづらい感じです。
-
-## 各々の使い方について
-
-### MT4 Manager APIについて
-MT4 Manager APIの本体は、次の2つのDLLで構成されています。
-
-* mtmanapi.dll
-* mtmanapi64.dll
-
-C++で開発されたネイティブDLLであるため、C#からこれらのDLLを呼び出す際は、DLLImportsでDLLを宣言する必要があります。
-
-ちなみに、MT4のEAからDLLを呼び出す場合も同様です。
-
-しかし、DLLImportsでDLLを宣言するタイプのものは、インテリセンスが効かないため、予め利用するメンバの仕様を調査しておく必要があり、大変面倒です。
-
-そこで、上述のとおり、MT4 Manager APIのDLLを.NETから利用するためのWrapperクラスを使います。
-
-このWrapperクラスを使うことにより、.NETライブラリとそん色なく（インテリセンスの機能も使える）、MT4 Manager APIを利用することができます。
-
-C#で開発する場合におけるC++の開発効率の悪さを考慮すると、C#で開発した方が、かなり開発コストを下げることが可能と思われますし、C++開発者よりもC#開発者の方が人口が多いため、このWrapperクラスは大変有用です。
-
-上記GitHubに公開されていたWrapperクラスは、ビルドすることにより、以下の2つの.NET DLLが生成されます。
-
-* P23.MetaTrader4.Manager.Contracts.dll
-* P23.MetaTrader4.Manager.ClrWrapper.dll
-
-このDLLをMetaQuotes社から提供されている上記2つのネイティブDLLと同じフォルダに配置し、アプリからはこのDLLの参照設定のみを行います。
-
-（ネイティブDLLは.NETから参照設定できません）
-
-参照設定が完了したら、まずはこのDLLを使うモジュール内にて、次のように名前空間の登録を行います。
-
-    using P23.MetaTrader4.Manager;
-    using P23.MetaTrader4.Manager.Contracts;
-
-続いて、次のような記述により、管理者ログインに接続するために必要なクラスをインスタンス化します。
-
-    /// <summary>
-    /// MT4 Manager Wrapper クラスをインスタンス化します。
-    /// </summary>
-    ClrWrapper metatrader = new ClrWrapper();
-
-管理者ログインのためには、「サーバー名」「ログインID」「パスワード」が必要となりますが、これらのパラメータは、次のような記述で、上記のWrapperクラスのインスタンスにセットします。
-
-    // 接続に必要となるパラメータのインスタンスを生成します
-    ConnectionParameters parameters = new ConnectionParameters();
-
-    // フォームに入力されている接続情報をパラメータにセットします
-    parameters.Server = txtServer.Text;
-    parameters.Login = int.Parse(txtLogin.Text);
-    parameters.Password = txtPassword.Text;
-
-    // 管理者ログインに接続を試みます
-    try
+// Initialize and connect
+using (var api = new MT5ApiWrapper())
+{
+    if (!api.Initialize())
+        throw new Exception("Failed to initialize MT5 API");
+    
+    if (!api.Connect("your-mt5-server", 12345, "manager-password"))
+        throw new Exception("Failed to connect to MT5 server");
+    
+    // Get user information
+    var user = api.GetUser(67890);
+    Console.WriteLine($"User: {user.Name}, Group: {user.Group}");
+    
+    // Get account information
+    var account = api.GetAccount(67890);
+    Console.WriteLine($"Balance: {account.Balance}, Equity: {account.Equity}");
+    
+    // Get users in a group
+    var users = api.GetUsersInGroup("demo");
+    foreach (var u in users)
     {
-        metatrader = new ClrWrapper(parameters);
+        Console.WriteLine($"User: {u.Login} - {u.Name}");
     }
-    catch (Exception ex)
-    {
-        MessageBox.Show("接続失敗..." + ex.Message);
-        return;
-    }
+}
+```
 
-    MessageBox.Show("接続成功！");
+### Using the Web API
 
-接続がうまくいった場合は、このインスタンスのUsersRange()メソッドをパラメータなしで実行することで、すべてのユーザー情報の配列を取得することが可能です。
+```bash
+# Connect to MT5 server
+curl -X POST http://localhost:8080/api/connect \
+  -H "Content-Type: application/json" \
+  -d '{"server":"your-server","login":12345,"password":"your-password"}'
 
-    // 1人ずつのユーザー情報を格納するUserRecordのリスト型を定義します
-    IList<UserRecord> users = metatrader.UsersRequest();
+# Get user information
+curl http://localhost:8080/api/user/67890
 
-    // データを取得する例です
-    for (int i = 0; i <= users.Count - 1; ++i)
-    {
-        // ※
-        // データ件数が多すぎて、すべてを出力できません
-        Debug.WriteLine(users[i].Name);
-    }
+# Perform balance operation
+curl -X POST http://localhost:8080/api/balance \
+  -H "Content-Type: application/json" \
+  -d '{"login":67890,"amount":100.0,"comment":"Deposit"}'
+```
 
-最後に、管理者ログイン状態から切断し、MT4 Manager Wrapperクラスを解放する。
+## 📊 API Comparison: MT4 vs MT5
 
-    // 管理者ログイン中の状態から切断します
-    metatrader.Disconnect();
+| Feature | MT4 | MT5 |
+|---------|-----|-----|
+| **User Retrieval** | All users at once (`UsersRequest()`) | Individual or by group |
+| **Performance** | Slower (bulk data) | Faster (targeted queries) |
+| **Flexibility** | Limited | High (granular control) |
+| **Complexity** | Simple | More complex |
+| **Data Access** | Properties | Methods (e.g., `user.Name()`) |
 
-    // MT4 Manager Wrapper クラスのインスタンスを破棄します
-    metatrader.Dispose();
+### MT4 Advantages
+- ✅ Simple API design
+- ✅ Get all users with one call
+- ✅ No need to know group names
 
+### MT5 Advantages
+- ✅ Better performance for targeted queries
+- ✅ More granular control
+- ✅ Modern architecture
+- ✅ Rich functionality
 
-### MT5 Manager APIについて
+## 🛠️ Applications Included
 
-MT5 Manager APIは、これらのファイルがMetaQuotes社から提供されています。
+### 1. Console Application (`MT5ConsoleApp`)
+Interactive command-line tool with menu-driven interface:
+- Connect to MT5 server
+- Get user and account information
+- Manage user groups
+- Perform balance operations
+- View trading history
 
-* MetaQuotes.MT5CommonAPI.dll
-* MetaQuotes.MT5CommonAPI64.dll
-* MetaQuotes.MT5GatewayAPI.dll
-* MetaQuotes.MT5GatewayAPI64.dll
-* MetaQuotes.MT5ManagerAPI.dll
-* MetaQuotes.MT5ManagerAPI64.dll
-* MetaQuotes.MT5WebAPI.dll
-* MT5APIGateway.dll
-* MT5APIGateway64.dll
-* MT5APIManager.dll
-* MT5APIManager64.dll
+### 2. Web API Server (`MT5WebAPI`)
+RESTful API server providing HTTP endpoints:
+- `POST /api/connect` - Server connection
+- `GET /api/user/{login}` - User information
+- `GET /api/account/{login}` - Account details
+- `POST /api/balance` - Balance operations
+- `GET /api/status` - Connection status
 
-このうち、ファイル名の末尾に「64」が付いているものが64ビット専用、付いていないものが「32」ビット専用です。
+### 3. Windows Forms Applications
+Original GUI applications for both MT4 and MT5 with form-based interfaces.
 
-また、ファイル名の先頭に「MetaQuotes.」が付いているものが、.NETライブラリです。
+## 📚 Documentation
 
-「MetaQuotes.」付きの.NETライブラリは、「MetaQuotes.」付きでないネイティブライブラリのWrapperクラスと思われ、.NET側から参照設定していなくても、同一フォルダ内に存在していることが必須です。
+- **[Quick Setup Guide](QUICK_SETUP.md)** - Get started in 5 minutes
+- **[Detailed Setup Instructions](MT5_SETUP_INSTRUCTIONS.md)** - Complete setup guide
+- **[API Documentation](docs/API.md)** - Full API reference
+- **[Interactive Playground](docs/PLAYGROUND.md)** - Try the API online
 
-そのため、常にこれらのファイルはワンセットで扱います。
+## 🔧 Prerequisites
 
-これらのDLLを利用したアプリを.NETで開発する場合、該当プロジェクトより、「MetaQuotes.」のDLLを参照設定する必要があります。
+1. **Windows Environment** - MT Manager API is Windows-only
+2. **Visual Studio or MSBuild** - For building the projects
+3. **MT5 Manager API DLLs** - From MetaQuotes or your broker
+4. **Manager Credentials** - Broker-provided manager account
 
-MT4 Manager Wrapperクラスと違い、おそらくMT5のネイティブDLLからの仕様と思われるが、正直、複数のクラスが絡み合っており、若干使いづらくてわかりにくいです。
+## 📦 Required DLL Files
 
-以下のGitHubのサイトにて、MT5 Manager APIを使いやすくするためのモジュールが入手できたので、これを流用して開発しています。
+### .NET Wrapper DLLs
+- `MetaQuotes.MT5CommonAPI.dll` (or `MetaQuotes.MT5CommonAPI64.dll`)
+- `MetaQuotes.MT5GatewayAPI.dll` (or `MetaQuotes.MT5GatewayAPI64.dll`)
+- `MetaQuotes.MT5ManagerAPI.dll` (or `MetaQuotes.MT5ManagerAPI64.dll`)
+- `MetaQuotes.MT5WebAPI.dll`
 
-* MT5Manager.cs
+### Native DLLs
+- `MT5APIGateway.dll` (or `MT5APIGateway64.dll`)
+- `MT5APIManager.dll` (or `MT5APIManager64.dll`)
 
-このモジュールの使い方は、次のとおりです。
+**Important**: Use either ALL 32-bit OR ALL 64-bit versions consistently!
 
-まず、名前空間に以下の一文を追加します。
+## 🔐 Security Best Practices
 
-    using MetaQuotes.MT5CommonAPI;
+- 🔒 Never hardcode credentials in source code
+- 🌍 Use environment variables for sensitive data
+- 🔐 Implement authentication for Web API endpoints
+- 🛡️ Use HTTPS in production environments
+- 📝 Log access attempts for security monitoring
 
-管理者ログインを実装するためには、以下のクラスをインスタンス化します。
+## 🐛 Troubleshooting
 
-    /// <summary>
-    /// 
-    /// </summary>
-    MT5Manager.CManager cManager = new MT5Manager.CManager();
+### Common Issues
 
-インスタンス化した後、Initialize()メソッドを実行することで、MT5 Manager APIを使うために必要な関連クラスの初期化が実行されます。
+**"Failed to initialize MT5 Manager API"**
+- ✅ Ensure all DLL files are in the correct directory
+- ✅ Check architecture consistency (32-bit vs 64-bit)
+- ✅ Verify DLL files are not blocked by Windows
 
-    // MT5Manager を初期化
-    if (cManager.Initialize() == false)
-    {
-        MessageBox.Show("Initialize Error");
-    }
+**"Failed to connect to MT5 server"**
+- ✅ Verify server address and port
+- ✅ Ensure you're using Manager credentials
+- ✅ Check network connectivity and firewall settings
 
-管理者ログインは、Loginメソッドにて、「サーバー名」「ログインID」「パスワード」を指定して実行します。
+**"Assembly not found" errors**
+- ✅ Run `setup-dlls.bat` to copy DLLs to all projects
+- ✅ Ensure both .NET and native DLLs are present
+- ✅ Check DLL version compatibility
 
-    // 管理者ログイン情報に入力された値を取得
-    string server = txtServer.Text;
-    ulong login = ulong.Parse(txtLogin.Text);
-    string password = txtPassword.Text;
+## 📞 Getting Help
 
-    if (cManager.Login(server, login, password) == false)
-    {
-        MessageBox.Show("ログイン情報が正しくありません。");
-        return;
-    }
+1. Check the [troubleshooting section](MT5_SETUP_INSTRUCTIONS.md#troubleshooting)
+2. Review console output for detailed error messages
+3. Verify your MT5 server settings and credentials
+4. Ensure all required DLL files are present and correct version
 
-    MessageBox.Show("ログイン成功！");
+## 📄 License
 
-管理者ログインに成功すると、次のような方法で、指定したユーザー1人のユーザー情報を取得することができます。
+This project is provided as-is for educational and development purposes. Please ensure you have proper licensing for the MetaQuotes MT Manager API DLLs from MetaQuotes or your broker.
 
-    UInt64 login = UInt64.Parse(txtUserLogin.Text);
+## 🤝 Contributing
 
-    // ユーザー情報を取得
-    CIMTUser user = cManager.GetUserInfo(login);
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests to improve this wrapper library.
 
-    // アカウント情報を取得
-    CIMTAccount acc = cManager.GetAccountInfo(login);
+---
 
-    // ※
-    // 上記の取得した内容を出力する処理は入れていませんが、クラスのなかに入っているのを確認できます
-    txtGroup.Text = user.Group();       // プロパティではなく、メソッドで該当値を取得するようなので注意！
-
-複数のユーザーのユーザー情報を取得する場合は、取得したいユーザーが所属するグループ名を指定します。
-
-ここがMT4と違うところで、逆にいえば、グループ名がわからないと、ユーザー情報を取得することができないようです。
-
-    string group = txtGroup.Text;
-
-    CIMTUserArray users = cManager.GetUsers(group);
-
-    // 使い方の例
-    string userNames = "";
-    for (uint i = 0; i <= users.Total() - 1; ++i)
-    {
-        CIMTUser user = users.Next(i);
-        string userName = user.Name();
-        userNames += userName;
-    }
-
-    MessageBox.Show(userNames);
-
-また、ちょっとわかりづらかったのが、ユーザーの名前や住所を入手するのが、NameやAddressなどのメソッドとなっており、プロパティではありません。
-
-そのため、
-
-    user.Name;
-
-ではなく、
-
-    user.Name();
-
-と記述します。
-
-最後に、MT5Managerでインスタンス化されている各種クラスを破棄するには、Shutdown()メソッドを実行します。
-
-    // MT5Manager 内のインスタンスを解放
-    cManager.Shutdown();
+**Made with ❤️ for the MetaTrader development community**
