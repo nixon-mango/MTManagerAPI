@@ -229,14 +229,14 @@ namespace MT5WebAPI
             return result;
         }
 
-        private AuthenticationResult AuthenticateRequest(HttpListenerRequest request)
+        private Models.AuthenticationResult AuthenticateRequest(HttpListenerRequest request)
         {
-            var config = SecurityConfig.Instance;
+            var config = Models.SecurityConfig.Instance;
             
             // If API key authentication is not required, allow all requests
             if (!config.RequireApiKey)
             {
-                return AuthenticationResult.Success(null);
+                return Models.AuthenticationResult.Success(null);
             }
 
             // Check for API key in headers
@@ -255,7 +255,7 @@ namespace MT5WebAPI
                 {
                     Console.WriteLine($"⚠️  Authentication failed: Missing API key from {request.RemoteEndPoint}");
                 }
-                return AuthenticationResult.Failure($"Missing API key. Include '{config.ApiKeyHeader}' header or 'api_key' query parameter.");
+                return Models.AuthenticationResult.Failure($"Missing API key. Include '{config.ApiKeyHeader}' header or 'api_key' query parameter.");
             }
 
             if (!config.IsValidApiKey(apiKey))
@@ -264,7 +264,7 @@ namespace MT5WebAPI
                 {
                     Console.WriteLine($"⚠️  Authentication failed: Invalid API key from {request.RemoteEndPoint}");
                 }
-                return AuthenticationResult.Failure("Invalid API key.");
+                return Models.AuthenticationResult.Failure("Invalid API key.");
             }
 
             // Check origin if configured
@@ -275,7 +275,7 @@ namespace MT5WebAPI
                 {
                     Console.WriteLine($"⚠️  Authentication failed: Origin not allowed: {origin} from {request.RemoteEndPoint}");
                 }
-                return AuthenticationResult.Failure("Origin not allowed.");
+                return Models.AuthenticationResult.Failure("Origin not allowed.");
             }
 
             if (config.LogSecurityEvents)
@@ -283,7 +283,7 @@ namespace MT5WebAPI
                 Console.WriteLine($"✅ Authentication successful from {request.RemoteEndPoint}");
             }
 
-            return AuthenticationResult.Success(apiKey);
+            return Models.AuthenticationResult.Success(apiKey);
         }
     }
 }
