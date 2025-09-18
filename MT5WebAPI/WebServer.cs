@@ -126,6 +126,10 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.GetAllRealUsers();
                     }
+                    else if (path == "/api/users/stats" && method == "GET")
+                    {
+                        responseText = _controller.GetUserDiscoveryStats();
+                    }
                     else if (path.StartsWith("/api/group/") && path.EndsWith("/users") && method == "GET")
                     {
                         string groupName = ExtractFromPath(path, "/api/group/", "/users");

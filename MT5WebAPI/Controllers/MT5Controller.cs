@@ -133,7 +133,29 @@ namespace MT5WebAPI.Controllers
             try
             {
                 var users = _api.GetAllUsers();
-                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+                
+                // Get additional discovery statistics
+                var realUsers = _api.GetAllRealUsers();
+                var additionalUsers = users.Count - realUsers.Count;
+                var groupsFound = users.Select(u => u.Group).Distinct().Count();
+                var loginRange = users.Count > 0 ? 
+                    $"{users.Min(u => u.Login)} - {users.Max(u => u.Login)}" : "N/A";
+                
+                var response = new
+                {
+                    users = users,
+                    discovery_stats = new
+                    {
+                        total_users = users.Count,
+                        from_real_groups = realUsers.Count,
+                        additional_discovered = additionalUsers,
+                        groups_found = groupsFound,
+                        login_range = loginRange,
+                        discovery_method = "Enhanced discovery using real groups + login ID patterns"
+                    }
+                };
+                
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(response));
             }
             catch (Exception ex)
             {
@@ -151,6 +173,47 @@ namespace MT5WebAPI.Controllers
             catch (Exception ex)
             {
                 return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all real users error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserDiscoveryStats()
+        {
+            try
+            {
+                var allUsers = _api.GetAllUsers();
+                var realUsers = _api.GetAllRealUsers();
+                
+                var stats = new
+                {
+                    total_users = allUsers.Count,
+                    from_real_groups = realUsers.Count,
+                    additional_discovered = allUsers.Count - realUsers.Count,
+                    groups_found = allUsers.Select(u => u.Group).Distinct().ToList(),
+                    groups_count = allUsers.Select(u => u.Group).Distinct().Count(),
+                    login_range = allUsers.Count > 0 ? new
+                    {
+                        min = allUsers.Min(u => u.Login),
+                        max = allUsers.Max(u => u.Login),
+                        range_text = $"{allUsers.Min(u => u.Login)} - {allUsers.Max(u => u.Login)}"
+                    } : null,
+                    discovery_method = "Enhanced discovery using real groups + login ID patterns",
+                    group_breakdown = allUsers.GroupBy(u => u.Group)
+                        .Select(g => new { group = g.Key, count = g.Count() })
+                        .OrderByDescending(g => g.count)
+                        .ToList(),
+                    activity_stats = new
+                    {
+                        active_today = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days == 0),
+                        active_week = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days <= 7),
+                        active_month = allUsers.Count(u => (DateTime.Now - u.LastAccess).Days <= 30)
+                    }
+                };
+                
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(stats));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get discovery stats error: {ex.Message}"));
             }
         }
 

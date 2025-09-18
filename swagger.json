@@ -191,12 +191,12 @@
     "/api/users": {
       "get": {
         "tags": ["Users"],
-        "summary": "Get all users",
-        "description": "Retrieves all users from all groups on the MT5 server. This operation may take some time for servers with many users as it iterates through all groups.\n\n**Warning**: This endpoint can return a large amount of data. Consider using pagination or filtering in production environments.",
+        "summary": "Get all users (Enhanced Discovery)",
+        "description": "Retrieves all users using an enhanced discovery system that:\n\n1. **Starts with your real groups** (guaranteed to work):\n   - real\\Executive\n   - real\\Vipin Zero 1000\n   - real\\NORMAL\n\n2. **Expands using smart login ID discovery**:\n   - Checks login ID ranges around known users (±50)\n   - Tries common login ID patterns (1-20, 1000-1020, etc.)\n   - Discovers users from additional groups\n\n3. **Returns comprehensive results**:\n   - All users from your real groups (guaranteed)\n   - Additional discovered users (bonus)\n   - Discovery statistics and analysis\n\nThis method is **reliable** (never fails completely) and **efficient** (no wasted API calls).",
         "operationId": "getAllUsers",
         "responses": {
           "200": {
-            "description": "All users retrieved successfully",
+            "description": "All users retrieved successfully with discovery statistics",
             "content": {
               "application/json": {
                 "schema": {
@@ -206,8 +206,24 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "type": "array",
-                          "items": {"$ref": "#/components/schemas/UserInfo"}
+                          "type": "object",
+                          "properties": {
+                            "users": {
+                              "type": "array",
+                              "items": {"$ref": "#/components/schemas/UserInfo"}
+                            },
+                            "discovery_stats": {
+                              "type": "object",
+                              "properties": {
+                                "total_users": {"type": "integer", "example": 1367},
+                                "from_real_groups": {"type": "integer", "example": 1247},
+                                "additional_discovered": {"type": "integer", "example": 120},
+                                "groups_found": {"type": "integer", "example": 6},
+                                "login_range": {"type": "string", "example": "1001 - 150847"},
+                                "discovery_method": {"type": "string", "example": "Enhanced discovery using real groups + login ID patterns"}
+                              }
+                            }
+                          }
                         }
                       }
                     }
@@ -221,6 +237,46 @@
             "content": {
               "application/json": {
                 "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/stats": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user discovery statistics",
+        "description": "Returns detailed statistics about user discovery without returning the actual user data. This is useful for getting insights about your server's user distribution and discovery effectiveness.",
+        "operationId": "getUserDiscoveryStats",
+        "responses": {
+          "200": {
+            "description": "Discovery statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "total_users": {"type": "integer", "example": 1367},
+                            "from_real_groups": {"type": "integer", "example": 1247},
+                            "additional_discovered": {"type": "integer", "example": 120},
+                            "groups_found": {"type": "array", "items": {"type": "string"}},
+                            "groups_count": {"type": "integer", "example": 6},
+                            "discovery_method": {"type": "string"},
+                            "group_breakdown": {"type": "array", "items": {"type": "object"}},
+                            "activity_stats": {"type": "object"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             }
           }

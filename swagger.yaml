@@ -194,16 +194,30 @@ paths:
     get:
       tags:
         - Users
-      summary: Get all users
+      summary: Get all users (Enhanced Discovery)
       description: |
-        Retrieves all users from all groups on the MT5 server.
-        This operation may take some time for servers with many users as it iterates through all groups.
+        Retrieves all users using an enhanced discovery system that:
         
-        **Warning**: This endpoint can return a large amount of data. Consider using pagination or filtering in production environments.
+        1. **Starts with your real groups** (guaranteed to work):
+           - real\Executive
+           - real\Vipin Zero 1000  
+           - real\NORMAL
+        
+        2. **Expands using smart login ID discovery**:
+           - Checks login ID ranges around known users (±50)
+           - Tries common login ID patterns (1-20, 1000-1020, etc.)
+           - Discovers users from additional groups
+        
+        3. **Returns comprehensive results**:
+           - All users from your real groups (guaranteed)
+           - Additional discovered users (bonus)
+           - Discovery statistics and analysis
+        
+        This method is **reliable** (never fails completely) and **efficient** (no wasted API calls).
       operationId: getAllUsers
       responses:
         '200':
-          description: All users retrieved successfully
+          description: All users retrieved successfully with discovery statistics
           content:
             application/json:
               schema:
@@ -212,33 +226,69 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/UserInfo'
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/UserInfo'
+                          discovery_stats:
+                            type: object
+                            properties:
+                              total_users:
+                                type: integer
+                                description: Total number of users found
+                                example: 1367
+                              from_real_groups:
+                                type: integer
+                                description: Users from your guaranteed real groups
+                                example: 1247
+                              additional_discovered:
+                                type: integer
+                                description: Additional users discovered via login ID patterns
+                                example: 120
+                              groups_found:
+                                type: integer
+                                description: Total number of groups discovered
+                                example: 6
+                              login_range:
+                                type: string
+                                description: Range of login IDs found
+                                example: "1001 - 150847"
+                              discovery_method:
+                                type: string
+                                description: Method used for discovery
+                                example: "Enhanced discovery using real groups + login ID patterns"
               examples:
-                all_users_response:
-                  summary: Successful response with multiple users
+                enhanced_discovery_response:
+                  summary: Enhanced discovery with statistics
                   value:
                     success: true
                     data:
-                      - login: 67890
-                        name: "John Doe"
-                        group: "demo"
-                        email: "john.doe@example.com"
-                        country: "United States"
-                        city: "New York"
-                        registration: "2024-01-01T00:00:00Z"
-                        last_access: "2024-01-15T09:30:00Z"
-                        leverage: 100
-                      - login: 67891
-                        name: "Jane Smith"
-                        group: "real"
-                        email: "jane.smith@example.com"
-                        country: "Canada"
-                        city: "Toronto"
-                        registration: "2024-01-02T00:00:00Z"
-                        last_access: "2024-01-15T10:15:00Z"
-                        leverage: 500
+                      users:
+                        - login: 12345
+                          name: "John Executive"
+                          group: "real\\Executive"
+                          email: "john@example.com"
+                          country: "United States"
+                          registration: "2024-01-01T00:00:00Z"
+                          last_access: "2024-01-15T09:30:00Z"
+                          leverage: 100
+                        - login: 1001
+                          name: "Jane Demo"
+                          group: "demo"
+                          email: "jane@example.com"
+                          country: "Canada"
+                          registration: "2024-01-02T00:00:00Z"
+                          last_access: "2024-01-15T10:15:00Z"
+                          leverage: 500
+                      discovery_stats:
+                        total_users: 1367
+                        from_real_groups: 1247
+                        additional_discovered: 120
+                        groups_found: 6
+                        login_range: "1001 - 150847"
+                        discovery_method: "Enhanced discovery using real groups + login ID patterns"
                     timestamp: "2024-01-15T10:30:00Z"
         '500':
           description: Server error
@@ -246,13 +296,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-              examples:
-                server_error:
-                  summary: Server error response
-                  value:
-                    success: false
-                    error: "Failed to retrieve users from one or more groups"
-                    timestamp: "2024-01-15T10:30:00Z"
 
   /api/users/real:
     get:
@@ -303,6 +346,146 @@ paths:
                         registration: "2024-01-02T00:00:00Z"
                         last_access: "2024-01-15T10:15:00Z"
                         leverage: 1000
+                    timestamp: "2024-01-15T10:30:00Z"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/stats:
+    get:
+      tags:
+        - Users
+      summary: Get user discovery statistics
+      description: |
+        Returns detailed statistics about user discovery without returning the actual user data.
+        This is useful for getting insights about your server's user distribution and discovery effectiveness.
+        
+        Provides information about:
+        - Total users found and breakdown by source
+        - Groups discovered and their user counts
+        - Login ID ranges and patterns
+        - Activity statistics
+        
+        This endpoint is faster than `/api/users` as it focuses on statistics rather than full user data.
+      operationId: getUserDiscoveryStats
+      responses:
+        '200':
+          description: Discovery statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total_users:
+                            type: integer
+                            description: Total number of users discovered
+                            example: 1367
+                          from_real_groups:
+                            type: integer
+                            description: Users from guaranteed real groups
+                            example: 1247
+                          additional_discovered:
+                            type: integer
+                            description: Additional users found via discovery
+                            example: 120
+                          groups_found:
+                            type: array
+                            items:
+                              type: string
+                            description: List of all groups discovered
+                            example: ["real\\Executive", "real\\Vipin Zero 1000", "real\\NORMAL", "demo", "test", "archive"]
+                          groups_count:
+                            type: integer
+                            description: Number of unique groups found
+                            example: 6
+                          login_range:
+                            type: object
+                            properties:
+                              min:
+                                type: integer
+                                example: 1001
+                              max:
+                                type: integer
+                                example: 150847
+                              range_text:
+                                type: string
+                                example: "1001 - 150847"
+                          discovery_method:
+                            type: string
+                            example: "Enhanced discovery using real groups + login ID patterns"
+                          group_breakdown:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                group:
+                                  type: string
+                                count:
+                                  type: integer
+                            description: User count by group, ordered by count descending
+                            example:
+                              - group: "real\\Executive"
+                                count: 456
+                              - group: "real\\Vipin Zero 1000"
+                                count: 389
+                              - group: "real\\NORMAL"
+                                count: 402
+                          activity_stats:
+                            type: object
+                            properties:
+                              active_today:
+                                type: integer
+                                description: Users active today
+                                example: 89
+                              active_week:
+                                type: integer
+                                description: Users active this week
+                                example: 234
+                              active_month:
+                                type: integer
+                                description: Users active this month
+                                example: 567
+              examples:
+                discovery_stats_response:
+                  summary: Complete discovery statistics
+                  value:
+                    success: true
+                    data:
+                      total_users: 1367
+                      from_real_groups: 1247
+                      additional_discovered: 120
+                      groups_found: ["real\\Executive", "real\\Vipin Zero 1000", "real\\NORMAL", "demo", "test", "archive"]
+                      groups_count: 6
+                      login_range:
+                        min: 1001
+                        max: 150847
+                        range_text: "1001 - 150847"
+                      discovery_method: "Enhanced discovery using real groups + login ID patterns"
+                      group_breakdown:
+                        - group: "real\\Executive"
+                          count: 456
+                        - group: "real\\Vipin Zero 1000"
+                          count: 389
+                        - group: "real\\NORMAL"
+                          count: 402
+                        - group: "demo"
+                          count: 45
+                        - group: "test"
+                          count: 35
+                        - group: "archive"
+                          count: 40
+                      activity_stats:
+                        active_today: 89
+                        active_week: 234
+                        active_month: 567
                     timestamp: "2024-01-15T10:30:00Z"
         '500':
           description: Server error

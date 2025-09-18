@@ -120,6 +120,11 @@ $tests = @(
         Description = "Get All Real Users (your specific groups)"
     },
     @{
+        Url = "$ApiUrl/api/users/stats"
+        Method = "GET"
+        Description = "Get User Discovery Statistics"
+    },
+    @{
         Url = "$ApiUrl/api/group/demo/users"
         Method = "GET"
         Description = "Get Users in Group (will fail if not connected)"
