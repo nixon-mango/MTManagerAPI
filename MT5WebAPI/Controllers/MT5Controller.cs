@@ -224,21 +224,19 @@ namespace MT5WebAPI.Controllers
                 if (request == null)
                     return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
 
-                // Comprehensive validation and testing
-                var testResults = new
+                var testResults = new Dictionary<string, object>();
+                
+                // Request validation
+                testResults["request_validation"] = new Dictionary<string, object>
                 {
-                    request_validation = new
-                    {
-                        login_valid = request.Login > 0,
-                        amount_valid = request.Amount != 0,
-                        type_valid = request.Type > 0,
-                        comment_provided = !string.IsNullOrEmpty(request.Comment)
-                    },
-                    user_check = (object)null,
-                    account_check = (object)null,
-                    api_connection = _api.IsConnected,
-                    test_timestamp = DateTime.UtcNow
+                    ["login_valid"] = request.Login > 0,
+                    ["amount_valid"] = request.Amount != 0,
+                    ["type_valid"] = request.Type >= 0,
+                    ["comment_provided"] = !string.IsNullOrEmpty(request.Comment)
                 };
+
+                testResults["api_connection"] = _api.IsConnected;
+                testResults["test_timestamp"] = DateTime.UtcNow;
 
                 // Check if user exists
                 try
@@ -246,19 +244,15 @@ namespace MT5WebAPI.Controllers
                     var user = _api.GetUser(request.Login);
                     if (user != null)
                     {
-                        testResults = new
+                        testResults["user_check"] = new Dictionary<string, object>
                         {
-                            request_validation = testResults.request_validation,
-                            user_check = new
-                            {
-                                exists = true,
-                                name = user.Name,
-                                group = user.Group,
-                                rights = user.Rights
-                            },
-                            account_check = (object)null,
-                            api_connection = testResults.api_connection,
-                            test_timestamp = testResults.test_timestamp
+                            ["exists"] = true,
+                            ["name"] = user.Name,
+                            ["group"] = user.Group,
+                            ["rights"] = user.Rights,
+                            ["leverage"] = user.Leverage,
+                            ["registration"] = user.Registration,
+                            ["last_access"] = user.LastAccess
                         };
 
                         // Check account info
@@ -267,57 +261,73 @@ namespace MT5WebAPI.Controllers
                             var account = _api.GetAccount(request.Login);
                             if (account != null)
                             {
-                                testResults = new
+                                testResults["account_check"] = new Dictionary<string, object>
                                 {
-                                    request_validation = testResults.request_validation,
-                                    user_check = testResults.user_check,
-                                    account_check = new
-                                    {
-                                        exists = true,
-                                        balance = account.Balance,
-                                        currency = account.Currency,
-                                        margin_level = account.MarginLevel
-                                    },
-                                    api_connection = testResults.api_connection,
-                                    test_timestamp = testResults.test_timestamp
+                                    ["exists"] = true,
+                                    ["balance"] = account.Balance,
+                                    ["currency"] = account.Currency,
+                                    ["margin_level"] = account.MarginLevel,
+                                    ["equity"] = account.Equity,
+                                    ["credit"] = account.Credit
+                                };
+                            }
+                            else
+                            {
+                                testResults["account_check"] = new Dictionary<string, object>
+                                {
+                                    ["exists"] = false,
+                                    ["error"] = "Account not found"
                                 };
                             }
                         }
                         catch (Exception accEx)
                         {
-                            testResults = new
+                            testResults["account_check"] = new Dictionary<string, object>
                             {
-                                request_validation = testResults.request_validation,
-                                user_check = testResults.user_check,
-                                account_check = new { error = accEx.Message },
-                                api_connection = testResults.api_connection,
-                                test_timestamp = testResults.test_timestamp
+                                ["error"] = accEx.Message
                             };
                         }
                     }
                     else
                     {
-                        testResults = new
+                        testResults["user_check"] = new Dictionary<string, object>
                         {
-                            request_validation = testResults.request_validation,
-                            user_check = new { exists = false, error = "User not found" },
-                            account_check = (object)null,
-                            api_connection = testResults.api_connection,
-                            test_timestamp = testResults.test_timestamp
+                            ["exists"] = false,
+                            ["error"] = "User not found"
                         };
                     }
                 }
                 catch (Exception userEx)
                 {
-                    testResults = new
+                    testResults["user_check"] = new Dictionary<string, object>
                     {
-                        request_validation = testResults.request_validation,
-                        user_check = new { error = userEx.Message },
-                        account_check = (object)null,
-                        api_connection = testResults.api_connection,
-                        test_timestamp = testResults.test_timestamp
+                        ["error"] = userEx.Message
                     };
                 }
+
+                // Add recommendations based on findings
+                var recommendations = new List<string>();
+                
+                if (!(bool)((Dictionary<string, object>)testResults["request_validation"])["login_valid"])
+                    recommendations.Add("Login ID must be greater than 0");
+                
+                if (!(bool)((Dictionary<string, object>)testResults["request_validation"])["amount_valid"])
+                    recommendations.Add("Amount cannot be zero");
+
+                if (!_api.IsConnected)
+                    recommendations.Add("API is not connected to MT5 server");
+
+                if (testResults.ContainsKey("user_check"))
+                {
+                    var userCheck = (Dictionary<string, object>)testResults["user_check"];
+                    if (userCheck.ContainsKey("exists") && !(bool)userCheck["exists"])
+                        recommendations.Add("User does not exist - check login ID");
+                    
+                    if (userCheck.ContainsKey("rights") && (uint)userCheck["rights"] == 0)
+                        recommendations.Add("User has no trading rights - contact broker to enable");
+                }
+
+                testResults["recommendations"] = recommendations;
 
                 return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(testResults));
             }

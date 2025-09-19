@@ -564,12 +564,104 @@ namespace MT5ManagerAPI
 
             try
             {
-                return _manager.DealerBalance(login, Math.Abs(amount), type, comment ?? "", amount > 0);
+                // Validate user exists first
+                var user = GetUser(login);
+                if (user == null)
+                    throw new MT5ApiException($"User with login {login} not found");
+
+                // Check user rights
+                if (user.Rights == 0)
+                    throw new MT5ApiException($"User {login} has no trading rights (rights = 0)");
+
+                // Perform the balance operation
+                System.Diagnostics.Debug.WriteLine($"Attempting balance operation: Login={login}, Amount={amount}, Type={type}, Comment={comment}");
+                
+                bool result = _manager.DealerBalance(login, Math.Abs(amount), type, comment ?? "", amount > 0);
+                
+                System.Diagnostics.Debug.WriteLine($"Balance operation result: {result}");
+                
+                return result;
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Balance operation exception: {ex.Message}");
                 throw new MT5ApiException($"Failed to perform balance operation for login {login}: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Test balance operation without actually performing it
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>Dictionary with validation results</returns>
+        public Dictionary<string, object> TestBalanceOperationValidation(ulong login)
+        {
+            var results = new Dictionary<string, object>();
+            
+            try
+            {
+                results["api_connected"] = _isConnected;
+                
+                if (!_isConnected)
+                {
+                    results["error"] = "Not connected to MT5 server";
+                    return results;
+                }
+
+                // Check user
+                try
+                {
+                    var user = GetUser(login);
+                    if (user != null)
+                    {
+                        results["user_exists"] = true;
+                        results["user_name"] = user.Name;
+                        results["user_group"] = user.Group;
+                        results["user_rights"] = user.Rights;
+                        results["user_rights_ok"] = user.Rights > 0;
+                    }
+                    else
+                    {
+                        results["user_exists"] = false;
+                        results["error"] = "User not found";
+                        return results;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results["user_error"] = ex.Message;
+                    return results;
+                }
+
+                // Check account
+                try
+                {
+                    var account = GetAccount(login);
+                    if (account != null)
+                    {
+                        results["account_exists"] = true;
+                        results["current_balance"] = account.Balance;
+                        results["account_currency"] = account.Currency;
+                    }
+                    else
+                    {
+                        results["account_exists"] = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results["account_error"] = ex.Message;
+                }
+
+                results["validation_passed"] = (bool)results["user_exists"] && (bool)results["user_rights_ok"];
+                
+            }
+            catch (Exception ex)
+            {
+                results["error"] = ex.Message;
+            }
+
+            return results;
         }
 
         /// <summary>
