@@ -185,6 +185,10 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.PerformBalanceOperation(GetRequestBody(request));
                     }
+                    else if (path == "/api/balance/test" && method == "POST")
+                    {
+                        responseText = _controller.TestBalanceOperation(GetRequestBody(request));
+                    }
                     else
                     {
                         response.StatusCode = 404;

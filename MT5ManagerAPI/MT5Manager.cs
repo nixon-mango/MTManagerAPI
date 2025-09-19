@@ -210,14 +210,32 @@ namespace MT5Manager
         //+------------------------------------------------------------------+
         public bool DealerBalance(UInt64 login, double amount, uint type, string comment, bool deposit)
         {
-            ulong deal_id;
-            MTRetCode res = m_manager.DealerBalance(login, deposit ? amount : -amount, type, comment, out deal_id);
-            if (res != MTRetCode.MT_RET_REQUEST_DONE)
+            try
             {
-                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance error ({0})", res);
+                ulong deal_id;
+                
+                // Log the operation attempt
+                m_manager.LoggerOut(EnMTLogCode.MTLogOK, "Attempting balance operation: Login={0}, Amount={1}, Type={2}, Comment={3}, Deposit={4}", 
+                    login, amount, type, comment, deposit);
+                
+                MTRetCode res = m_manager.DealerBalance(login, deposit ? amount : -amount, type, comment, out deal_id);
+                
+                // Log the result
+                m_manager.LoggerOut(EnMTLogCode.MTLogOK, "DealerBalance result: {0}, DealID={1}", res, deal_id);
+                
+                if (res != MTRetCode.MT_RET_REQUEST_DONE && res != MTRetCode.MT_RET_OK)
+                {
+                    m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance error ({0})", res);
+                    return (false);
+                }
+                
+                return (true);
+            }
+            catch (Exception ex)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance exception: {0}", ex.Message);
                 return (false);
             }
-            return (true);
         }
         //+------------------------------------------------------------------+
         //| Get User Array                                                   |

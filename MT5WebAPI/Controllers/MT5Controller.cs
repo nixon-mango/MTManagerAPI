@@ -216,6 +216,117 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string TestBalanceOperation(string requestBody)
+        {
+            try
+            {
+                var request = JsonConvert.DeserializeObject<BalanceRequest>(requestBody);
+                if (request == null)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
+
+                // Comprehensive validation and testing
+                var testResults = new
+                {
+                    request_validation = new
+                    {
+                        login_valid = request.Login > 0,
+                        amount_valid = request.Amount != 0,
+                        type_valid = request.Type > 0,
+                        comment_provided = !string.IsNullOrEmpty(request.Comment)
+                    },
+                    user_check = (object)null,
+                    account_check = (object)null,
+                    api_connection = _api.IsConnected,
+                    test_timestamp = DateTime.UtcNow
+                };
+
+                // Check if user exists
+                try
+                {
+                    var user = _api.GetUser(request.Login);
+                    if (user != null)
+                    {
+                        testResults = new
+                        {
+                            request_validation = testResults.request_validation,
+                            user_check = new
+                            {
+                                exists = true,
+                                name = user.Name,
+                                group = user.Group,
+                                rights = user.Rights
+                            },
+                            account_check = (object)null,
+                            api_connection = testResults.api_connection,
+                            test_timestamp = testResults.test_timestamp
+                        };
+
+                        // Check account info
+                        try
+                        {
+                            var account = _api.GetAccount(request.Login);
+                            if (account != null)
+                            {
+                                testResults = new
+                                {
+                                    request_validation = testResults.request_validation,
+                                    user_check = testResults.user_check,
+                                    account_check = new
+                                    {
+                                        exists = true,
+                                        balance = account.Balance,
+                                        currency = account.Currency,
+                                        margin_level = account.MarginLevel
+                                    },
+                                    api_connection = testResults.api_connection,
+                                    test_timestamp = testResults.test_timestamp
+                                };
+                            }
+                        }
+                        catch (Exception accEx)
+                        {
+                            testResults = new
+                            {
+                                request_validation = testResults.request_validation,
+                                user_check = testResults.user_check,
+                                account_check = new { error = accEx.Message },
+                                api_connection = testResults.api_connection,
+                                test_timestamp = testResults.test_timestamp
+                            };
+                        }
+                    }
+                    else
+                    {
+                        testResults = new
+                        {
+                            request_validation = testResults.request_validation,
+                            user_check = new { exists = false, error = "User not found" },
+                            account_check = (object)null,
+                            api_connection = testResults.api_connection,
+                            test_timestamp = testResults.test_timestamp
+                        };
+                    }
+                }
+                catch (Exception userEx)
+                {
+                    testResults = new
+                    {
+                        request_validation = testResults.request_validation,
+                        user_check = new { error = userEx.Message },
+                        account_check = (object)null,
+                        api_connection = testResults.api_connection,
+                        test_timestamp = testResults.test_timestamp
+                    };
+                }
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(testResults));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Test balance operation error: {ex.Message}"));
+            }
+        }
+
         public string GetUserDiscoveryStats()
         {
             try
@@ -304,24 +415,59 @@ namespace MT5WebAPI.Controllers
                 if (request == null)
                     return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
 
+                // Validate the request
+                if (request.Login == 0)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Login ID is required"));
+                
+                if (request.Amount == 0)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Amount cannot be zero"));
+
+                // Check if user exists before attempting balance operation
+                try
+                {
+                    var user = _api.GetUser(request.Login);
+                    if (user == null)
+                    {
+                        return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"User with login {request.Login} not found"));
+                    }
+                    Console.WriteLine($"  User found: {user.Name} ({user.Group})");
+                }
+                catch (Exception userEx)
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Failed to verify user: {userEx.Message}"));
+                }
+
+                // Log the operation attempt
+                Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Balance operation attempt:");
+                Console.WriteLine($"  Login: {request.Login}");
+                Console.WriteLine($"  Amount: {request.Amount}");
+                Console.WriteLine($"  Type: {request.Type}");
+                Console.WriteLine($"  Comment: {request.Comment}");
+
                 bool success = _api.BalanceOperation(request.Login, request.Amount, request.Comment ?? "", request.Type);
+                
                 if (success)
                 {
+                    Console.WriteLine($"  Result: SUCCESS");
                     return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(new 
                     { 
                         message = "Balance operation successful",
                         login = request.Login,
                         amount = request.Amount,
-                        comment = request.Comment
+                        comment = request.Comment,
+                        type = request.Type,
+                        timestamp = DateTime.UtcNow
                     }));
                 }
                 else
                 {
-                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Balance operation failed"));
+                    Console.WriteLine($"  Result: FAILED");
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Balance operation failed - check MT5 server logs for details"));
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"  Result: EXCEPTION - {ex.Message}");
                 return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Balance operation error: {ex.Message}"));
             }
         }
