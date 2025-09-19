@@ -1,5 +1,7 @@
 # MT5 Manager API Setup Instructions
 
+> **📚 For comprehensive documentation:** Visit the [Complete Documentation](docs/README.md) including [Setup Guide](docs/SETUP.md), [API Reference](docs/API.md), and [Interactive Playground](docs/PLAYGROUND.md).
+
 ## Overview
 
 This project provides a modern C# wrapper for the MetaQuotes MT5 Manager API, including:
@@ -201,3 +203,10 @@ curl -X POST http://localhost:8080/api/balance \
 3. Test with the console application first
 4. Deploy the Web API for remote access if needed
 5. Integrate the library into your existing applications
+
+## 📚 Additional Resources
+
+- **[Interactive Playground](docs/PLAYGROUND.md)** - Try hands-on examples and scenarios
+- **[Complete API Reference](docs/API.md)** - Detailed documentation with examples
+- **[Advanced Setup Guide](docs/SETUP.md)** - Production deployment and optimization
+- **[Quick Setup](QUICK_SETUP.md)** - Get started in 5 minutes

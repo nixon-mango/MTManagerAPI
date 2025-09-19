@@ -70,15 +70,21 @@ namespace MT5ConsoleApp
                                 GetAccountInfo(api);
                                 break;
                             case "3":
-                                GetUsersInGroup(api);
+                                GetAllUsers(api);
                                 break;
                             case "4":
-                                GetUserGroup(api);
+                                GetAllRealUsers(api);
                                 break;
                             case "5":
-                                PerformBalanceOperation(api);
+                                GetUsersInGroup(api);
                                 break;
                             case "6":
+                                GetUserGroup(api);
+                                break;
+                            case "7":
+                                PerformBalanceOperation(api);
+                                break;
+                            case "8":
                                 GetUserDeals(api);
                                 break;
                             case "0":
@@ -121,10 +127,13 @@ namespace MT5ConsoleApp
             Console.WriteLine("=== MT5 Manager API Menu ===");
             Console.WriteLine("1. Get User Information");
             Console.WriteLine("2. Get Account Information");
-            Console.WriteLine("3. Get Users in Group");
-            Console.WriteLine("4. Get User Group");
-            Console.WriteLine("5. Perform Balance Operation");
-            Console.WriteLine("6. Get User Deals");
+            Console.WriteLine("3. Get All Users (Discovery)");
+            Console.WriteLine("4. Get All Real Users (Your Groups)");
+            Console.WriteLine("5. Get Users in Group");
+            Console.WriteLine("6. Get User Group");
+            Console.WriteLine("7. Perform Balance Operation");
+            Console.WriteLine("8. Get User Positions");
+            Console.WriteLine("9. Get User Deals");
             Console.WriteLine("0. Exit");
             Console.WriteLine();
             Console.Write("Choose an option: ");
@@ -183,6 +192,152 @@ namespace MT5ConsoleApp
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void GetAllUsers(MT5ApiWrapper api)
+        {
+            try
+            {
+                Console.WriteLine("\n=== Getting All Users (Enhanced Discovery) ===");
+                Console.WriteLine("🔍 Step 1: Getting users from your real groups...");
+                
+                // First, get the real users to show progress
+                var realUsers = api.GetAllRealUsers();
+                Console.WriteLine($"✓ Found {realUsers.Count} users in your real groups");
+                
+                Console.WriteLine("🔍 Step 2: Expanding discovery using login ID patterns...");
+                Console.WriteLine("⚠️  This may take some time as we search for additional users...");
+                
+                var allUsers = api.GetAllUsers();
+                
+                Console.WriteLine($"\n✅ Discovery Complete!");
+                Console.WriteLine($"📊 Total Users Found: {allUsers.Count}");
+                Console.WriteLine($"   - From real groups: {realUsers.Count}");
+                Console.WriteLine($"   - Additional discovered: {allUsers.Count - realUsers.Count}");
+                
+                if (allUsers.Count > 0)
+                {
+                    Console.WriteLine("\n📊 Summary by Group:");
+                    var groupSummary = allUsers.GroupBy(u => u.Group)
+                                              .OrderByDescending(g => g.Count())
+                                              .Take(10);
+                    
+                    foreach (var group in groupSummary)
+                    {
+                        Console.WriteLine($"   {group.Key}: {group.Count()} users");
+                    }
+                    
+                    Console.WriteLine($"\n📋 Sample Users (showing first 15):");
+                    Console.WriteLine("Login       | Name                 | Group                | Country");
+                    Console.WriteLine("------------|----------------------|----------------------|------------------");
+                    
+                    foreach (var user in allUsers.Take(15))
+                    {
+                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-20} | {user.Country}");
+                    }
+                    
+                    if (allUsers.Count > 15)
+                    {
+                        Console.WriteLine($"... and {allUsers.Count - 15} more users");
+                    }
+                    
+                    // Discovery analysis
+                    var loginRanges = allUsers.Select(u => u.Login).OrderBy(l => l).ToList();
+                    var minLogin = loginRanges.First();
+                    var maxLogin = loginRanges.Last();
+                    
+                    Console.WriteLine($"\n🔍 Discovery Analysis:");
+                    Console.WriteLine($"   Login ID range: {minLogin} - {maxLogin}");
+                    Console.WriteLine($"   Groups discovered: {allUsers.Select(u => u.Group).Distinct().Count()}");
+                    
+                    // Activity analysis
+                    var now = DateTime.Now;
+                    var activeToday = allUsers.Count(u => (now - u.LastAccess).Days == 0);
+                    var activeWeek = allUsers.Count(u => (now - u.LastAccess).Days <= 7);
+                    var activeMonth = allUsers.Count(u => (now - u.LastAccess).Days <= 30);
+                    
+                    Console.WriteLine($"\n📈 Activity Summary:");
+                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / allUsers.Count:F1}%)");
+                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / allUsers.Count:F1}%)");
+                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / allUsers.Count:F1}%)");
+                }
+                else
+                {
+                    Console.WriteLine("❌ No users found.");
+                    Console.WriteLine("💡 Try using option 4 (Get All Real Users) to see if your groups are accessible.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting all users: {ex.Message}");
+                Console.WriteLine("💡 Try using option 4 (Get All Real Users) which is known to work.");
+            }
+        }
+
+        static void GetAllRealUsers(MT5ApiWrapper api)
+        {
+            try
+            {
+                Console.WriteLine("\n=== Getting All Real Users ===");
+                Console.WriteLine("Checking your server's real groups:");
+                Console.WriteLine("  - real\\Executive");
+                Console.WriteLine("  - real\\Vipin Zero 1000");
+                Console.WriteLine("  - real\\NORMAL");
+                Console.WriteLine();
+                
+                var users = api.GetAllRealUsers();
+                
+                Console.WriteLine($"✓ Retrieved {users.Count} real users total");
+                
+                if (users.Count > 0)
+                {
+                    Console.WriteLine("\n📊 Summary by Group:");
+                    var groupSummary = users.GroupBy(u => u.Group)
+                                           .OrderByDescending(g => g.Count());
+                    
+                    foreach (var group in groupSummary)
+                    {
+                        Console.WriteLine($"   {group.Key}: {group.Count()} users");
+                    }
+                    
+                    Console.WriteLine($"\n📋 Sample Users (showing first 10):");
+                    Console.WriteLine("Login       | Name                 | Group                | Country");
+                    Console.WriteLine("------------|----------------------|----------------------|------------------");
+                    
+                    foreach (var user in users.Take(10))
+                    {
+                        Console.WriteLine($"{user.Login,10} | {user.Name,-20} | {user.Group,-20} | {user.Country}");
+                    }
+                    
+                    if (users.Count > 10)
+                    {
+                        Console.WriteLine($"... and {users.Count - 10} more users");
+                    }
+                    
+                    // Activity analysis
+                    var now = DateTime.Now;
+                    var activeToday = users.Count(u => (now - u.LastAccess).Days == 0);
+                    var activeWeek = users.Count(u => (now - u.LastAccess).Days <= 7);
+                    var activeMonth = users.Count(u => (now - u.LastAccess).Days <= 30);
+                    
+                    Console.WriteLine($"\n📈 Activity Summary:");
+                    Console.WriteLine($"   Active today: {activeToday} ({activeToday * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this week: {activeWeek} ({activeWeek * 100.0 / users.Count:F1}%)");
+                    Console.WriteLine($"   Active this month: {activeMonth} ({activeMonth * 100.0 / users.Count:F1}%)");
+                }
+                else
+                {
+                    Console.WriteLine("No users found in real groups.");
+                    Console.WriteLine("💡 This might mean:");
+                    Console.WriteLine("   - The groups don't exist on your server");
+                    Console.WriteLine("   - Your manager account doesn't have access to these groups");
+                    Console.WriteLine("   - The group names have different formatting");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting real users: {ex.Message}");
             }
         }
 
@@ -278,6 +433,81 @@ namespace MT5ConsoleApp
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void GetUserPositions(MT5ApiWrapper api)
+        {
+            Console.Write("Enter user login: ");
+            if (!ulong.TryParse(Console.ReadLine(), out ulong userLogin))
+            {
+                Console.WriteLine("Invalid login format");
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine($"\n=== Getting Positions for User {userLogin} ===");
+                
+                // Get position summary first
+                var summary = api.GetUserPositionSummary(userLogin);
+                
+                Console.WriteLine($"📊 Position Summary:");
+                Console.WriteLine($"   Total positions: {summary.TotalPositions}");
+                Console.WriteLine($"   Buy positions: {summary.BuyPositions}");
+                Console.WriteLine($"   Sell positions: {summary.SellPositions}");
+                Console.WriteLine($"   Total volume: {summary.TotalVolume:F2} lots");
+                Console.WriteLine($"   Total profit: {summary.TotalProfit:F2}");
+                Console.WriteLine($"   Symbols: {string.Join(", ", summary.Symbols)}");
+                
+                if (summary.TotalPositions > 0)
+                {
+                    // Get detailed positions
+                    var positions = api.GetUserPositions(userLogin);
+                    
+                    Console.WriteLine($"\n📋 Detailed Positions:");
+                    Console.WriteLine("Symbol    | Action | Volume | Open Price | Current Price | Profit   | Time Created");
+                    Console.WriteLine("----------|--------|--------|------------|---------------|----------|------------------");
+                    
+                    foreach (var position in positions)
+                    {
+                        Console.WriteLine($"{position.Symbol,-9} | {position.Action,-6} | {position.Volume,6:F2} | {position.PriceOpen,10:F5} | {position.PriceCurrent,13:F5} | {position.Profit,8:F2} | {position.TimeCreate:MM-dd HH:mm}");
+                    }
+                    
+                    // Risk analysis
+                    var profitablePositions = positions.Count(p => p.Profit > 0);
+                    var losingPositions = positions.Count(p => p.Profit < 0);
+                    var breakEvenPositions = positions.Count(p => p.Profit == 0);
+                    
+                    Console.WriteLine($"\n📈 Risk Analysis:");
+                    Console.WriteLine($"   Profitable: {profitablePositions} ({profitablePositions * 100.0 / summary.TotalPositions:F1}%)");
+                    Console.WriteLine($"   Losing: {losingPositions} ({losingPositions * 100.0 / summary.TotalPositions:F1}%)");
+                    Console.WriteLine($"   Break-even: {breakEvenPositions} ({breakEvenPositions * 100.0 / summary.TotalPositions:F1}%)");
+                    
+                    // Symbol exposure
+                    var symbolExposure = positions.GroupBy(p => p.Symbol)
+                        .Select(g => new { 
+                            Symbol = g.Key, 
+                            Count = g.Count(), 
+                            Volume = g.Sum(p => p.Volume),
+                            Profit = g.Sum(p => p.Profit)
+                        })
+                        .OrderByDescending(s => Math.Abs(s.Volume));
+                    
+                    Console.WriteLine($"\n🎯 Symbol Exposure:");
+                    foreach (var exposure in symbolExposure)
+                    {
+                        Console.WriteLine($"   {exposure.Symbol}: {exposure.Count} positions, {exposure.Volume:F2} lots, P&L: {exposure.Profit:F2}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("\n✅ No open positions for this user.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting positions: {ex.Message}");
             }
         }
 

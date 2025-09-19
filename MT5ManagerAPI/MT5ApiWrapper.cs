@@ -172,6 +172,308 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
+        /// Get all users from your server's real groups
+        /// </summary>
+        /// <returns>List of all users from real groups</returns>
+        public List<UserInfo> GetAllRealUsers()
+        {
+            // Your server's most important real groups
+            string[] realGroups = { 
+                "real", "real\\Executive", "real\\NORMAL", "real\\Vipin Zero 1000",
+                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\VIP A", "real\\VIP B",
+                "real\\PRO A", "real\\PRO B", "real\\Standard", "real\\Executive 25",
+                "real\\Vipin Zero", "real\\Vipin Zero 2500", "real\\GOLD 1", "real\\GOLD 2"
+            };
+            return GetAllUsers(realGroups);
+        }
+
+        /// <summary>
+        /// Get all users from demo groups
+        /// </summary>
+        /// <returns>List of all users from demo groups</returns>
+        public List<UserInfo> GetAllDemoUsers()
+        {
+            string[] demoGroups = { 
+                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
+                "demo\\stock", "demo\\SPREAD 19"
+            };
+            return GetAllUsers(demoGroups);
+        }
+
+        /// <summary>
+        /// Get all VIP users from various VIP groups
+        /// </summary>
+        /// <returns>List of all VIP users</returns>
+        public List<UserInfo> GetAllVIPUsers()
+        {
+            string[] vipGroups = { 
+                "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
+                "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
+            };
+            return GetAllUsers(vipGroups);
+        }
+
+        /// <summary>
+        /// Get all users from manager groups
+        /// </summary>
+        /// <returns>List of all manager users</returns>
+        public List<UserInfo> GetAllManagerUsers()
+        {
+            string[] managerGroups = { 
+                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
+            };
+            return GetAllUsers(managerGroups);
+        }
+
+        /// <summary>
+        /// Get all users by discovering them from known working groups and then expanding with individual user lookups
+        /// </summary>
+        /// <param name="groupNames">Array of group names to query. If null, uses your real groups + discovery.</param>
+        /// <returns>List of all users from the specified groups</returns>
+        public List<UserInfo> GetAllUsers(string[] groupNames = null)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            try
+            {
+                List<UserInfo> allUsers = new List<UserInfo>();
+                HashSet<ulong> seenLogins = new HashSet<ulong>();
+
+                if (groupNames != null && groupNames.Length > 0)
+                {
+                    // Use specified group names
+                    foreach (string groupName in groupNames)
+                    {
+                        if (string.IsNullOrEmpty(groupName)) continue;
+
+                        try
+                        {
+                            var users = GetUsersInGroup(groupName);
+                            foreach (var user in users)
+                            {
+                                if (!seenLogins.Contains(user.Login))
+                                {
+                                    allUsers.Add(user);
+                                    seenLogins.Add(user.Login);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log error but continue with other groups
+                            System.Diagnostics.Debug.WriteLine($"Error getting users for group {groupName}: {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    // Start with your working real groups
+                    var realUsers = GetAllRealUsers();
+                    foreach (var user in realUsers)
+                    {
+                        if (!seenLogins.Contains(user.Login))
+                        {
+                            allUsers.Add(user);
+                            seenLogins.Add(user.Login);
+                        }
+                    }
+
+                    // Then try to discover more users by expanding the search
+                    // This uses the working real users as a foundation to discover more
+                    var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
+                    allUsers.AddRange(expandedUsers);
+                }
+
+                return allUsers;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get all users: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Expand user discovery by trying to find more users around known login IDs
+        /// </summary>
+        /// <param name="knownUsers">Users we already found</param>
+        /// <param name="seenLogins">Login IDs we've already processed</param>
+        /// <returns>List of additional users found</returns>
+        private List<UserInfo> ExpandUserDiscovery(List<UserInfo> knownUsers, HashSet<ulong> seenLogins)
+        {
+            var expandedUsers = new List<UserInfo>();
+            
+            if (knownUsers.Count == 0)
+                return expandedUsers;
+
+            try
+            {
+                // Strategy 1: Try login IDs around known users (sequential discovery)
+                var loginRanges = GetLoginRanges(knownUsers);
+                
+                foreach (var range in loginRanges)
+                {
+                    for (ulong loginId = range.Start; loginId <= range.End; loginId++)
+                    {
+                        if (seenLogins.Contains(loginId))
+                            continue;
+
+                        try
+                        {
+                            var user = GetUser(loginId);
+                            if (user != null)
+                            {
+                                expandedUsers.Add(user);
+                                seenLogins.Add(loginId);
+                                
+                                // Limit to avoid too many API calls
+                                if (expandedUsers.Count >= 100)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Reached expansion limit of 100 additional users");
+                                    return expandedUsers;
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // User doesn't exist or access denied, continue
+                            continue;
+                        }
+                    }
+                }
+
+                // Strategy 2: Try common login ID patterns
+                var patternUsers = TryCommonLoginPatterns(seenLogins);
+                expandedUsers.AddRange(patternUsers);
+
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in user discovery expansion: {ex.Message}");
+            }
+
+            return expandedUsers;
+        }
+
+        /// <summary>
+        /// Get login ID ranges around known users for sequential discovery
+        /// </summary>
+        private List<(ulong Start, ulong End)> GetLoginRanges(List<UserInfo> knownUsers)
+        {
+            var ranges = new List<(ulong Start, ulong End)>();
+            var sortedLogins = knownUsers.Select(u => u.Login).OrderBy(l => l).ToList();
+
+            foreach (var login in sortedLogins)
+            {
+                // Check range around each known login (±50)
+                ulong start = login > 50 ? login - 50 : 1;
+                ulong end = login + 50;
+                
+                ranges.Add((start, end));
+            }
+
+            return ranges.Take(5).ToList(); // Limit to 5 ranges to avoid too many API calls
+        }
+
+        /// <summary>
+        /// Try common login ID patterns
+        /// </summary>
+        private List<UserInfo> TryCommonLoginPatterns(HashSet<ulong> seenLogins)
+        {
+            var patternUsers = new List<UserInfo>();
+            
+            // Common patterns: 1-100, 1000-1100, 10000-10100, etc.
+            ulong[] commonStarts = { 1, 100, 1000, 10000, 100000 };
+            
+            foreach (var start in commonStarts)
+            {
+                for (ulong i = start; i < start + 20; i++) // Check first 20 in each range
+                {
+                    if (seenLogins.Contains(i))
+                        continue;
+
+                    try
+                    {
+                        var user = GetUser(i);
+                        if (user != null)
+                        {
+                            patternUsers.Add(user);
+                            seenLogins.Add(i);
+                            
+                            if (patternUsers.Count >= 20) // Limit pattern discovery
+                                return patternUsers;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            return patternUsers;
+        }
+
+        /// <summary>
+        /// Get all users from all discoverable common groups
+        /// </summary>
+        /// <returns>List of all users from common groups</returns>
+        private List<UserInfo> GetAllUsersFromCommonGroups()
+        {
+            try
+            {
+                // Get users from common groups
+                var userArrays = _manager.GetUsersFromCommonGroups();
+                if (userArrays == null || userArrays.Count == 0)
+                    return new List<UserInfo>();
+
+                var allUsers = new List<UserInfo>();
+                var seenLogins = new HashSet<ulong>(); // To avoid duplicates
+
+                // Process each group's users
+                foreach (var userArray in userArrays)
+                {
+                    if (userArray != null)
+                    {
+                        for (uint i = 0; i < userArray.Total(); i++)
+                        {
+                            var user = userArray.Next(i);
+                            if (user != null && !seenLogins.Contains(user.Login()))
+                            {
+                                allUsers.Add(new UserInfo
+                                {
+                                    Login = user.Login(),
+                                    Name = user.Name(),
+                                    Group = user.Group(),
+                                    Email = user.EMail(),
+                                    Country = user.Country(),
+                                    City = user.City(),
+                                    State = user.State(),
+                                    ZipCode = user.ZIPCode(),
+                                    Address = user.Address(),
+                                    Phone = user.Phone(),
+                                    Comment = user.Comment(),
+                                    Registration = SMTTime.ToDateTime(user.Registration()),
+                                    LastAccess = SMTTime.ToDateTime(user.LastAccess()),
+                                    Leverage = user.Leverage(),
+                                    Rights = (uint)user.Rights()
+                                });
+                                seenLogins.Add(user.Login());
+                            }
+                        }
+                    }
+                }
+
+                return allUsers;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get users from common groups: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Get all users in a specific group
         /// </summary>
         /// <param name="groupName">Group name</param>
@@ -262,12 +564,104 @@ namespace MT5ManagerAPI
 
             try
             {
-                return _manager.DealerBalance(login, Math.Abs(amount), type, comment ?? "", amount > 0);
+                // Validate user exists first
+                var user = GetUser(login);
+                if (user == null)
+                    throw new MT5ApiException($"User with login {login} not found");
+
+                // Check user rights
+                if (user.Rights == 0)
+                    throw new MT5ApiException($"User {login} has no trading rights (rights = 0)");
+
+                // Perform the balance operation
+                System.Diagnostics.Debug.WriteLine($"Attempting balance operation: Login={login}, Amount={amount}, Type={type}, Comment={comment}");
+                
+                bool result = _manager.DealerBalance(login, Math.Abs(amount), type, comment ?? "", amount > 0);
+                
+                System.Diagnostics.Debug.WriteLine($"Balance operation result: {result}");
+                
+                return result;
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Balance operation exception: {ex.Message}");
                 throw new MT5ApiException($"Failed to perform balance operation for login {login}: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Test balance operation without actually performing it
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>Dictionary with validation results</returns>
+        public Dictionary<string, object> TestBalanceOperationValidation(ulong login)
+        {
+            var results = new Dictionary<string, object>();
+            
+            try
+            {
+                results["api_connected"] = _isConnected;
+                
+                if (!_isConnected)
+                {
+                    results["error"] = "Not connected to MT5 server";
+                    return results;
+                }
+
+                // Check user
+                try
+                {
+                    var user = GetUser(login);
+                    if (user != null)
+                    {
+                        results["user_exists"] = true;
+                        results["user_name"] = user.Name;
+                        results["user_group"] = user.Group;
+                        results["user_rights"] = user.Rights;
+                        results["user_rights_ok"] = user.Rights > 0;
+                    }
+                    else
+                    {
+                        results["user_exists"] = false;
+                        results["error"] = "User not found";
+                        return results;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results["user_error"] = ex.Message;
+                    return results;
+                }
+
+                // Check account
+                try
+                {
+                    var account = GetAccount(login);
+                    if (account != null)
+                    {
+                        results["account_exists"] = true;
+                        results["current_balance"] = account.Balance;
+                        results["account_currency"] = account.Currency;
+                    }
+                    else
+                    {
+                        results["account_exists"] = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results["account_error"] = ex.Message;
+                }
+
+                results["validation_passed"] = (bool)results["user_exists"] && (bool)results["user_rights_ok"];
+                
+            }
+            catch (Exception ex)
+            {
+                results["error"] = ex.Message;
+            }
+
+            return results;
         }
 
         /// <summary>
@@ -292,6 +686,162 @@ namespace MT5ManagerAPI
             catch (Exception ex)
             {
                 throw new MT5ApiException($"Failed to get deals for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get user positions
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>List of user positions</returns>
+        public List<PositionInfo> GetUserPositions(ulong login)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            try
+            {
+                CIMTPositionArray positions;
+                if (!_manager.GetUserPositions(out positions, login))
+                    return new List<PositionInfo>();
+
+                var result = new List<PositionInfo>();
+                for (uint i = 0; i < positions.Total(); i++)
+                {
+                    var position = positions.Next(i);
+                    if (position != null)
+                    {
+                        result.Add(new PositionInfo
+                        {
+                            PositionId = position.Position(),
+                            Login = position.Login(),
+                            Symbol = position.Symbol(),
+                            Action = position.Action().ToString(),
+                            Volume = position.Volume(),
+                            PriceOpen = position.PriceOpen(),
+                            PriceCurrent = position.PriceCurrent(),
+                            Profit = position.Profit(),
+                            Storage = position.Storage(),
+                            Commission = 0.0, // Not available in this API version
+                            TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
+                            TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
+                            Comment = position.Comment(),
+                            ExternalId = position.ExternalID(),
+                            Reason = position.Reason().ToString(),
+                            Digits = position.Digits(),
+                            DigitsCurrency = position.DigitsCurrency(),
+                            ContractSize = position.ContractSize(),
+                            RateProfit = position.RateProfit(),
+                            RateMargin = position.RateMargin(),
+                            ExpertId = position.ExpertID(),
+                            ExpertPositionId = position.ExpertPositionID()
+                        });
+                    }
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get positions for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get position summary for a user
+        /// </summary>
+        /// <param name="login">User login ID</param>
+        /// <returns>Position summary</returns>
+        public PositionSummary GetUserPositionSummary(ulong login)
+        {
+            try
+            {
+                var positions = GetUserPositions(login);
+                
+                return new PositionSummary
+                {
+                    Login = login,
+                    TotalPositions = positions.Count,
+                    BuyPositions = positions.Count(p => p.Action.Contains("Buy")),
+                    SellPositions = positions.Count(p => p.Action.Contains("Sell")),
+                    TotalVolume = positions.Sum(p => p.Volume),
+                    TotalProfit = positions.Sum(p => p.Profit),
+                    Symbols = positions.Select(p => p.Symbol).Distinct().ToArray(),
+                    LastUpdate = DateTime.Now
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get position summary for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get positions for all users in a group (using fallback method)
+        /// </summary>
+        /// <param name="groupName">Group name</param>
+        /// <returns>List of all positions in the group</returns>
+        public List<PositionInfo> GetGroupPositions(string groupName)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            if (string.IsNullOrEmpty(groupName))
+                throw new ArgumentException("Group name cannot be empty", nameof(groupName));
+
+            try
+            {
+                // Use fallback method to get group positions
+                var positionArrays = _manager.GetGroupPositionsFallback(groupName);
+                if (positionArrays == null || positionArrays.Count == 0)
+                    return new List<PositionInfo>();
+
+                var result = new List<PositionInfo>();
+                
+                // Process each user's positions
+                foreach (var positionArray in positionArrays)
+                {
+                    if (positionArray != null)
+                    {
+                        for (uint i = 0; i < positionArray.Total(); i++)
+                        {
+                            var position = positionArray.Next(i);
+                            if (position != null)
+                            {
+                                result.Add(new PositionInfo
+                                {
+                                    PositionId = position.Position(),
+                                    Login = position.Login(),
+                                    Symbol = position.Symbol(),
+                                    Action = position.Action().ToString(),
+                                    Volume = position.Volume(),
+                                    PriceOpen = position.PriceOpen(),
+                                    PriceCurrent = position.PriceCurrent(),
+                                    Profit = position.Profit(),
+                                    Storage = position.Storage(),
+                                    Commission = 0.0, // Not available in this API version
+                                    TimeCreate = SMTTime.ToDateTime(position.TimeCreate()),
+                                    TimeUpdate = SMTTime.ToDateTime(position.TimeUpdate()),
+                                    Comment = position.Comment(),
+                                    ExternalId = position.ExternalID(),
+                                    Reason = position.Reason().ToString(),
+                                    Digits = position.Digits(),
+                                    DigitsCurrency = position.DigitsCurrency(),
+                                    ContractSize = position.ContractSize(),
+                                    RateProfit = position.RateProfit(),
+                                    RateMargin = position.RateMargin(),
+                                    ExpertId = position.ExpertID(),
+                                    ExpertPositionId = position.ExpertPositionID()
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get positions for group {groupName}: {ex.Message}", ex);
             }
         }
 

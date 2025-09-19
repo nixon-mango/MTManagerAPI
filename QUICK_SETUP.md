@@ -1,5 +1,7 @@
 # 🚀 Quick Setup Guide for MT5 Manager API
 
+> **📚 Need more details?** Check out the [Complete Setup Guide](docs/SETUP.md) for comprehensive instructions, troubleshooting, and production deployment.
+
 ## ⚠️ Build Error Resolution
 
 The build is failing because the MT5 Manager API DLL files are not in the correct location. Here's how to fix it:
@@ -111,3 +113,9 @@ If you're still getting errors:
 2. Verify they match the required file names
 3. Ensure consistent 32-bit or 64-bit usage
 4. Make sure all files are unblocked in Windows
+
+## 📚 Next Steps
+
+- **[Try the Interactive Playground](docs/PLAYGROUND.md)** - Hands-on examples and scenarios
+- **[Read the API Documentation](docs/API.md)** - Complete API reference
+- **[Complete Setup Guide](docs/SETUP.md)** - Comprehensive setup and production deployment

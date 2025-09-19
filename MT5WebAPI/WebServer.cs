@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using MT5WebAPI.Controllers;
+using MT5WebAPI.Models;
 using Newtonsoft.Json;
 
 namespace MT5WebAPI
@@ -83,6 +84,24 @@ namespace MT5WebAPI
 
                 Console.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {method} {path}");
 
+                // Authentication check
+                var authResult = AuthenticateRequest(request);
+                if (!authResult.IsAuthenticated)
+                {
+                    response.StatusCode = 401;
+                    responseText = JsonConvert.SerializeObject(new { 
+                        success = false, 
+                        error = authResult.ErrorMessage,
+                        timestamp = DateTime.UtcNow
+                    });
+                    
+                    byte[] authErrorBuffer = Encoding.UTF8.GetBytes(responseText);
+                    response.ContentLength64 = authErrorBuffer.Length;
+                    response.OutputStream.Write(authErrorBuffer, 0, authErrorBuffer.Length);
+                    response.Close();
+                    return;
+                }
+
                 try
                 {
                     if (path == "/api/connect" && method == "POST")
@@ -108,6 +127,16 @@ namespace MT5WebAPI
                         var queryParams = ParseQueryString(request.Url.Query);
                         responseText = _controller.GetUserDeals(loginStr, queryParams);
                     }
+                    else if (path.StartsWith("/api/user/") && path.EndsWith("/positions") && method == "GET")
+                    {
+                        string loginStr = ExtractFromPath(path, "/api/user/", "/positions");
+                        responseText = _controller.GetUserPositions(loginStr);
+                    }
+                    else if (path.StartsWith("/api/user/") && path.EndsWith("/positions/summary") && method == "GET")
+                    {
+                        string loginStr = ExtractFromPath(path, "/api/user/", "/positions/summary");
+                        responseText = _controller.GetUserPositionSummary(loginStr);
+                    }
                     else if (path.StartsWith("/api/user/") && method == "GET")
                     {
                         string loginStr = ExtractFromPath(path, "/api/user/", "");
@@ -118,14 +147,47 @@ namespace MT5WebAPI
                         string loginStr = ExtractFromPath(path, "/api/account/", "");
                         responseText = _controller.GetAccount(loginStr);
                     }
+                    else if (path == "/api/users" && method == "GET")
+                    {
+                        responseText = _controller.GetAllUsers();
+                    }
+                    else if (path == "/api/users/real" && method == "GET")
+                    {
+                        responseText = _controller.GetAllRealUsers();
+                    }
+                    else if (path == "/api/users/demo" && method == "GET")
+                    {
+                        responseText = _controller.GetAllDemoUsers();
+                    }
+                    else if (path == "/api/users/vip" && method == "GET")
+                    {
+                        responseText = _controller.GetAllVIPUsers();
+                    }
+                    else if (path == "/api/users/managers" && method == "GET")
+                    {
+                        responseText = _controller.GetAllManagerUsers();
+                    }
+                    else if (path == "/api/users/stats" && method == "GET")
+                    {
+                        responseText = _controller.GetUserDiscoveryStats();
+                    }
                     else if (path.StartsWith("/api/group/") && path.EndsWith("/users") && method == "GET")
                     {
                         string groupName = ExtractFromPath(path, "/api/group/", "/users");
                         responseText = _controller.GetUsersInGroup(groupName);
                     }
+                    else if (path.StartsWith("/api/group/") && path.EndsWith("/positions") && method == "GET")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/group/", "/positions");
+                        responseText = _controller.GetGroupPositions(groupName);
+                    }
                     else if (path == "/api/balance" && method == "POST")
                     {
                         responseText = _controller.PerformBalanceOperation(GetRequestBody(request));
+                    }
+                    else if (path == "/api/balance/test" && method == "POST")
+                    {
+                        responseText = _controller.TestBalanceOperation(GetRequestBody(request));
                     }
                     else
                     {
@@ -196,6 +258,63 @@ namespace MT5WebAPI
                 }
             }
             return result;
+        }
+
+        private Models.AuthenticationResult AuthenticateRequest(HttpListenerRequest request)
+        {
+            var config = Models.SecurityConfig.Instance;
+            
+            // If API key authentication is not required, allow all requests
+            if (!config.RequireApiKey)
+            {
+                return Models.AuthenticationResult.Success(null);
+            }
+
+            // Check for API key in headers
+            string apiKey = request.Headers[config.ApiKeyHeader];
+            
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                // Also check query parameter as fallback
+                var queryParams = ParseQueryString(request.Url.Query);
+                apiKey = queryParams.ContainsKey("api_key") ? queryParams["api_key"] : null;
+            }
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Missing API key from {request.RemoteEndPoint}");
+                }
+                return Models.AuthenticationResult.Failure($"Missing API key. Include '{config.ApiKeyHeader}' header or 'api_key' query parameter.");
+            }
+
+            if (!config.IsValidApiKey(apiKey))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Invalid API key from {request.RemoteEndPoint}");
+                }
+                return Models.AuthenticationResult.Failure("Invalid API key.");
+            }
+
+            // Check origin if configured
+            string origin = request.Headers["Origin"];
+            if (!config.IsOriginAllowed(origin))
+            {
+                if (config.LogSecurityEvents)
+                {
+                    Console.WriteLine($"⚠️  Authentication failed: Origin not allowed: {origin} from {request.RemoteEndPoint}");
+                }
+                return Models.AuthenticationResult.Failure("Origin not allowed.");
+            }
+
+            if (config.LogSecurityEvents)
+            {
+                Console.WriteLine($"✅ Authentication successful from {request.RemoteEndPoint}");
+            }
+
+            return Models.AuthenticationResult.Success(apiKey);
         }
     }
 }

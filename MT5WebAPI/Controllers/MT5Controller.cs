@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using MT5ManagerAPI;
 using MT5WebAPI.Models;
 using Newtonsoft.Json;
@@ -128,6 +129,255 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetAllUsers()
+        {
+            try
+            {
+                var users = _api.GetAllUsers();
+                
+                // Get additional discovery statistics
+                var realUsers = _api.GetAllRealUsers();
+                var additionalUsers = users.Count - realUsers.Count;
+                var groupsFound = users.Select(u => u.Group).Distinct().Count();
+                var loginRange = users.Count > 0 ? 
+                    $"{users.Min(u => u.Login)} - {users.Max(u => u.Login)}" : "N/A";
+                
+                var response = new
+                {
+                    users = users,
+                    discovery_stats = new
+                    {
+                        total_users = users.Count,
+                        from_real_groups = realUsers.Count,
+                        additional_discovered = additionalUsers,
+                        groups_found = groupsFound,
+                        login_range = loginRange,
+                        discovery_method = "Enhanced discovery using real groups + login ID patterns"
+                    }
+                };
+                
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(response));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllRealUsers()
+        {
+            try
+            {
+                var users = _api.GetAllRealUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all real users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllDemoUsers()
+        {
+            try
+            {
+                var users = _api.GetAllDemoUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all demo users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllVIPUsers()
+        {
+            try
+            {
+                var users = _api.GetAllVIPUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all VIP users error: {ex.Message}"));
+            }
+        }
+
+        public string GetAllManagerUsers()
+        {
+            try
+            {
+                var users = _api.GetAllManagerUsers();
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.UserInfo>>.CreateSuccess(users));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all manager users error: {ex.Message}"));
+            }
+        }
+
+        public string TestBalanceOperation(string requestBody)
+        {
+            try
+            {
+                var request = JsonConvert.DeserializeObject<BalanceRequest>(requestBody);
+                if (request == null)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
+
+                var testResults = new Dictionary<string, object>();
+                
+                // Request validation
+                testResults["request_validation"] = new Dictionary<string, object>
+                {
+                    ["login_valid"] = request.Login > 0,
+                    ["amount_valid"] = request.Amount != 0,
+                    ["type_valid"] = request.Type >= 0,
+                    ["comment_provided"] = !string.IsNullOrEmpty(request.Comment)
+                };
+
+                testResults["api_connection"] = _api.IsConnected;
+                testResults["test_timestamp"] = DateTime.UtcNow;
+
+                // Check if user exists
+                try
+                {
+                    var user = _api.GetUser(request.Login);
+                    if (user != null)
+                    {
+                        testResults["user_check"] = new Dictionary<string, object>
+                        {
+                            ["exists"] = true,
+                            ["name"] = user.Name,
+                            ["group"] = user.Group,
+                            ["rights"] = user.Rights,
+                            ["leverage"] = user.Leverage,
+                            ["registration"] = user.Registration,
+                            ["last_access"] = user.LastAccess
+                        };
+
+                        // Check account info
+                        try
+                        {
+                            var account = _api.GetAccount(request.Login);
+                            if (account != null)
+                            {
+                                testResults["account_check"] = new Dictionary<string, object>
+                                {
+                                    ["exists"] = true,
+                                    ["balance"] = account.Balance,
+                                    ["currency"] = account.Currency,
+                                    ["margin_level"] = account.MarginLevel,
+                                    ["equity"] = account.Equity,
+                                    ["credit"] = account.Credit
+                                };
+                            }
+                            else
+                            {
+                                testResults["account_check"] = new Dictionary<string, object>
+                                {
+                                    ["exists"] = false,
+                                    ["error"] = "Account not found"
+                                };
+                            }
+                        }
+                        catch (Exception accEx)
+                        {
+                            testResults["account_check"] = new Dictionary<string, object>
+                            {
+                                ["error"] = accEx.Message
+                            };
+                        }
+                    }
+                    else
+                    {
+                        testResults["user_check"] = new Dictionary<string, object>
+                        {
+                            ["exists"] = false,
+                            ["error"] = "User not found"
+                        };
+                    }
+                }
+                catch (Exception userEx)
+                {
+                    testResults["user_check"] = new Dictionary<string, object>
+                    {
+                        ["error"] = userEx.Message
+                    };
+                }
+
+                // Add recommendations based on findings
+                var recommendations = new List<string>();
+                
+                if (!(bool)((Dictionary<string, object>)testResults["request_validation"])["login_valid"])
+                    recommendations.Add("Login ID must be greater than 0");
+                
+                if (!(bool)((Dictionary<string, object>)testResults["request_validation"])["amount_valid"])
+                    recommendations.Add("Amount cannot be zero");
+
+                if (!_api.IsConnected)
+                    recommendations.Add("API is not connected to MT5 server");
+
+                if (testResults.ContainsKey("user_check"))
+                {
+                    var userCheck = (Dictionary<string, object>)testResults["user_check"];
+                    if (userCheck.ContainsKey("exists") && !(bool)userCheck["exists"])
+                        recommendations.Add("User does not exist - check login ID");
+                    
+                    if (userCheck.ContainsKey("rights") && (uint)userCheck["rights"] == 0)
+                        recommendations.Add("User has no trading rights - contact broker to enable");
+                }
+
+                testResults["recommendations"] = recommendations;
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(testResults));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Test balance operation error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserDiscoveryStats()
+        {
+            try
+            {
+                var allUsers = _api.GetAllUsers();
+                var realUsers = _api.GetAllRealUsers();
+                
+                var stats = new
+                {
+                    total_users = allUsers.Count,
+                    from_real_groups = realUsers.Count,
+                    additional_discovered = allUsers.Count - realUsers.Count,
+                    groups_found = allUsers.Select(u => u.Group).Distinct().ToList(),
+                    groups_count = allUsers.Select(u => u.Group).Distinct().Count(),
+                    login_range = allUsers.Count > 0 ? new
+                    {
+                        min = allUsers.Min(u => u.Login),
+                        max = allUsers.Max(u => u.Login),
+                        range_text = $"{allUsers.Min(u => u.Login)} - {allUsers.Max(u => u.Login)}"
+                    } : null,
+                    discovery_method = "Enhanced discovery using real groups + login ID patterns",
+                    group_breakdown = allUsers.GroupBy(u => u.Group)
+                        .Select(g => new { group = g.Key, count = g.Count() })
+                        .OrderByDescending(g => g.count)
+                        .ToList(),
+                    activity_stats = new
+                    {
+                        active_today = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days == 0).Count(),
+                        active_week = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days <= 7).Count(),
+                        active_month = allUsers.Where(u => (DateTime.Now - u.LastAccess).Days <= 30).Count()
+                    }
+                };
+                
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(stats));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get discovery stats error: {ex.Message}"));
+            }
+        }
+
         public string GetUsersInGroup(string groupName)
         {
             try
@@ -175,24 +425,59 @@ namespace MT5WebAPI.Controllers
                 if (request == null)
                     return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
 
+                // Validate the request
+                if (request.Login == 0)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Login ID is required"));
+                
+                if (request.Amount == 0)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Amount cannot be zero"));
+
+                // Check if user exists before attempting balance operation
+                try
+                {
+                    var user = _api.GetUser(request.Login);
+                    if (user == null)
+                    {
+                        return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"User with login {request.Login} not found"));
+                    }
+                    Console.WriteLine($"  User found: {user.Name} ({user.Group})");
+                }
+                catch (Exception userEx)
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Failed to verify user: {userEx.Message}"));
+                }
+
+                // Log the operation attempt
+                Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Balance operation attempt:");
+                Console.WriteLine($"  Login: {request.Login}");
+                Console.WriteLine($"  Amount: {request.Amount}");
+                Console.WriteLine($"  Type: {request.Type}");
+                Console.WriteLine($"  Comment: {request.Comment}");
+
                 bool success = _api.BalanceOperation(request.Login, request.Amount, request.Comment ?? "", request.Type);
+                
                 if (success)
                 {
+                    Console.WriteLine($"  Result: SUCCESS");
                     return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(new 
                     { 
                         message = "Balance operation successful",
                         login = request.Login,
                         amount = request.Amount,
-                        comment = request.Comment
+                        comment = request.Comment,
+                        type = request.Type,
+                        timestamp = DateTime.UtcNow
                     }));
                 }
                 else
                 {
-                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Balance operation failed"));
+                    Console.WriteLine($"  Result: FAILED");
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Balance operation failed - check MT5 server logs for details"));
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"  Result: EXCEPTION - {ex.Message}");
                 return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Balance operation error: {ex.Message}"));
             }
         }
@@ -251,6 +536,54 @@ namespace MT5WebAPI.Controllers
             catch (Exception ex)
             {
                 return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get user deals error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserPositions(string loginStr)
+        {
+            try
+            {
+                if (!ulong.TryParse(loginStr, out ulong login))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid login format"));
+
+                var positions = _api.GetUserPositions(login);
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.PositionInfo>>.CreateSuccess(positions));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get user positions error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserPositionSummary(string loginStr)
+        {
+            try
+            {
+                if (!ulong.TryParse(loginStr, out ulong login))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid login format"));
+
+                var summary = _api.GetUserPositionSummary(login);
+                return JsonConvert.SerializeObject(ApiResponse<MT5ManagerAPI.Models.PositionSummary>.CreateSuccess(summary));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get user position summary error: {ex.Message}"));
+            }
+        }
+
+        public string GetGroupPositions(string groupName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(groupName))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Group name is required"));
+
+                var positions = _api.GetGroupPositions(groupName);
+                return JsonConvert.SerializeObject(ApiResponse<List<MT5ManagerAPI.Models.PositionInfo>>.CreateSuccess(positions));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get group positions error: {ex.Message}"));
             }
         }
 

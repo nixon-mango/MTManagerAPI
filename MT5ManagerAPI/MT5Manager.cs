@@ -1,4 +1,4 @@
-﻿//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //|                                MetaTrader 5 API Manager for .NET |
 //|                        Copyright 2012-2021, OBI HOLDINGS PTE LTD |
 //|                                              https://obih.sg/ja/ |
@@ -22,6 +22,7 @@ namespace MT5Manager
         CIMTUser m_user = null;
         CIMTUserArray m_users = null;
         CIMTAccount m_account = null;
+        CIMTPositionArray m_positions = null;
         //+------------------------------------------------------------------+
         //| Constructor                                                      |
         //+------------------------------------------------------------------+
@@ -86,6 +87,13 @@ namespace MT5Manager
                 System.Console.WriteLine("UserCreateAccount fail");
                 return (false);
             }
+            //--- create position array
+            if ((m_positions = m_manager.PositionCreateArray()) == null)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionCreateArray fail");
+                System.Console.WriteLine("PositionCreateArray fail");
+                return (false);
+            }
             //--- all right
             return (true);
         }
@@ -142,6 +150,11 @@ namespace MT5Manager
                 m_account.Dispose();
                 m_account = null;
             }
+            if (m_positions != null)
+            {
+                m_positions.Dispose();
+                m_positions = null;
+            }
             SMTManagerAPIFactory.Shutdown();
         }
         //+------------------------------------------------------------------+
@@ -197,14 +210,32 @@ namespace MT5Manager
         //+------------------------------------------------------------------+
         public bool DealerBalance(UInt64 login, double amount, uint type, string comment, bool deposit)
         {
-            ulong deal_id;
-            MTRetCode res = m_manager.DealerBalance(login, deposit ? amount : -amount, type, comment, out deal_id);
-            if (res != MTRetCode.MT_RET_REQUEST_DONE)
+            try
             {
-                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance error ({0})", res);
+                ulong deal_id;
+                
+                // Log the operation attempt
+                m_manager.LoggerOut(EnMTLogCode.MTLogOK, "Attempting balance operation: Login={0}, Amount={1}, Type={2}, Comment={3}, Deposit={4}", 
+                    login, amount, type, comment, deposit);
+                
+                MTRetCode res = m_manager.DealerBalance(login, deposit ? amount : -amount, type, comment, out deal_id);
+                
+                // Log the result
+                m_manager.LoggerOut(EnMTLogCode.MTLogOK, "DealerBalance result: {0}, DealID={1}", res, deal_id);
+                
+                if (res != MTRetCode.MT_RET_REQUEST_DONE && res != MTRetCode.MT_RET_OK)
+                {
+                    m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance error ({0})", res);
+                    return (false);
+                }
+                
+                return (true);
+            }
+            catch (Exception ex)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "DealerBalance exception: {0}", ex.Message);
                 return (false);
             }
-            return (true);
         }
         //+------------------------------------------------------------------+
         //| Get User Array                                                   |
@@ -233,6 +264,144 @@ namespace MT5Manager
                 return (false);
             }
             return (true);
+        }
+        //+------------------------------------------------------------------+
+        //| Get Users from Common Groups (fallback implementation)          |
+        //+------------------------------------------------------------------+
+        public System.Collections.Generic.List<CIMTUserArray> GetUsersFromCommonGroups()
+        {
+            // Your server's actual group names (complete list)
+            string[] actualGroups = { 
+                // Basic groups
+                "abc", "coverage", "preliminary", "real",
+                
+                // Demo groups
+                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                "demo\\PRO", "demo\\PS GOLD", "demo\\Ruble", "demo\\SPREAD 19", "demo\\VIP", 
+                "demo\\forex.hedged", "demo\\forex.hedged1", "demo\\gold", "demo\\gold souq", 
+                "demo\\goldnolev", "demo\\gsnew15 test", "demo\\no lev", "demo\\stock",
+                
+                // Manager groups
+                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master",
+                
+                // Real groups (your main groups)
+                "real\\20spread", "real\\50 lev", "real\\ALLWIN CENT COVER", "real\\ALLWIN CENT GIVEUP", 
+                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\ALLWIN PREMIUM 1 B", 
+                "real\\ALLWIN PREMIUM 1 test", "real\\ALLWIN PREMIUM 1A", "real\\ALLWIN PREMIUM Hedging strgy", 
+                "real\\ALLWIN PREMIUM netting cents", "real\\ALLWIN PREMIUM netting usd", "real\\ALLWIN STD 1", 
+                "real\\ALLWIN Test", "real\\ALLWIN VIP 1", "real\\ARAFAT NEW", "real\\Arafat gold", 
+                "real\\B2B", "real\\CENT GIVEUP", "real\\CENT INGT", "real\\CENT INGT TEST", 
+                "real\\CENT INGT new", "real\\CENT_EA", "real\\Copy trades", "real\\Crown 25 spread", 
+                "real\\Crown 30 spread", "real\\Crown 35 spread", "real\\Crown 40 spread", 
+                "real\\Crown 45 spread", "real\\Crown 50 spread", "real\\EA B2B", "real\\EA TEST", 
+                "real\\EA TEST 2", "real\\EA TEST 3", "real\\Ea covering", "real\\Executive", 
+                "real\\Executive 25", "real\\Executive Swap", "real\\Executive Swap+", "real\\Executive+KGM", 
+                "real\\Faizal 1", "real\\Faizal 122", "real\\Faizal 4", "real\\Faizal 5", 
+                "real\\GOLD 1", "real\\GOLD 2", "real\\GOLD EA", "real\\GRAMIN JEWELLERY", 
+                "real\\Gld INGT", "real\\Gld INGT DEMO", "real\\Gld OZ SPREAD 50", "real\\Gold26", 
+                "real\\INDIA", "real\\INGT NRML", "real\\JIBIN IB", "real\\LONG TERM", 
+                "real\\MSTR IB", "real\\Metal20Spread", "real\\NG", "real\\NORMAL", 
+                "real\\NORMAL 2", "real\\NORMAL 60spread", "real\\NORMAL STOCK", "real\\NORMAL Scalpers", 
+                "real\\NORMAL slip", "real\\Naseem", "real\\Nijas", "real\\Niyaz", 
+                "real\\Normal Floating", "real\\PIP 40", "real\\PRO A", "real\\PRO A1", 
+                "real\\PRO B", "real\\PRO new", "real\\Prakash", "real\\SPREAD 15", 
+                "real\\SPREAD 19", "real\\STD A", "real\\STD B", "real\\STOCK 20", 
+                "real\\STOCK 20 Netting", "real\\SUB IB", "real\\SWAP AFTER 10 DAYS", 
+                "real\\Saiful Executive", "real\\Saiful PRO", "real\\Saiful VIP", "real\\Soni Ji Bullion", 
+                "real\\Standard", "real\\Stocks 1", "real\\Stocks 1 (100 stop)", "real\\Stocks 10 lev", 
+                "real\\Stocks 20 lev", "real\\Stocks 4 lev", "real\\Stocks 5 lev", "real\\TEST", 
+                "real\\TEST STOCK 20", "real\\TEST Z", "real\\TradersArena25", "real\\UAE", 
+                "real\\VIP A", "real\\VIP B", "real\\VIPIN 18 Spread", "real\\VIPIN KGM", 
+                "real\\Vinayak Floating", "real\\Vipin 18", "real\\Vipin 18 Test", "real\\Vipin New", 
+                "real\\Vipin Zero", "real\\Vipin Zero 1000", "real\\Vipin Zero 2500", 
+                "real\\Vipin Zero 2500 test", "real\\Vipin Zero 2500(400 lev)", "real\\Vipin no lev", 
+                "real\\amanawafi", "real\\awafispread45", "real\\awafispread60", "real\\faisal 8", 
+                "real\\faisal7", "real\\faizal 6", "real\\falah saadi", "real\\falah saadi 100spread", 
+                "real\\falah saadi 100spread&lev", "real\\falah saadi 100spread200lev", 
+                "real\\falah saadi 200spread100lev", "real\\falah saadi 200spread200lev", 
+                "real\\falah saadi 50spread200lev", "real\\falah saadi 55spread200lev", 
+                "real\\falah saadi 60spread200lev", "real\\falah saadi new", "real\\falah saadi normal", 
+                "real\\goldlev20", "real\\goldlev20 Spread 30+", "real\\goldnolev", "real\\gs01", 
+                "real\\gsnew", "real\\gsnew15", "real\\gsnew15 test", "real\\gsnew6", 
+                "real\\ibrahim", "real\\ibrahim Netting", "real\\lev20", "real\\manualtraders", 
+                "real\\margin 4", "real\\margin 5", "real\\newtest", "real\\niyas80spred", 
+                "real\\raw\\raw WL", "real\\real", "real\\shahala", "real\\shameem", 
+                "real\\shameem 2", "real\\shameem swap", "real\\stock0lev", "real\\stock0lev Executive", 
+                "real\\stock0levTest", "real\\test 1", "real\\test 1265", "real\\test 2", 
+                "real\\tt only", "real\\yoosuf 50 spread", "real\\yoosuf Floating", "real\\yoosuf New"
+            };
+
+            var userArrays = new System.Collections.Generic.List<CIMTUserArray>();
+            
+            foreach (string groupName in actualGroups)
+            {
+                try
+                {
+                    var users = GetUsers(groupName);
+                    if (users != null && users.Total() > 0)
+                    {
+                        userArrays.Add(users);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Group doesn't exist or access denied, continue with next group
+                    continue;
+                }
+            }
+            
+            return userArrays;
+        }
+        //+------------------------------------------------------------------+
+        //| Get User Positions                                               |
+        //+------------------------------------------------------------------+
+        public bool GetUserPositions(out CIMTPositionArray positions, UInt64 login)
+        {
+            positions = null;
+            MTRetCode res = m_manager.PositionRequest(login, m_positions);
+            if (res != MTRetCode.MT_RET_OK)
+            {
+                m_manager.LoggerOut(EnMTLogCode.MTLogErr, "PositionRequest fail({0})", res);
+                return (false);
+            }
+            //--- 
+            positions = m_positions;
+            return (true);
+        }
+        //+------------------------------------------------------------------+
+        //| Get All Positions (fallback: get individual user positions)     |
+        //+------------------------------------------------------------------+
+        public System.Collections.Generic.List<CIMTPositionArray> GetGroupPositionsFallback(string group)
+        {
+            var positionArrays = new System.Collections.Generic.List<CIMTPositionArray>();
+            
+            // Get users in the group first
+            var users = GetUsers(group);
+            if (users == null) return positionArrays;
+            
+            // Get positions for each user in the group
+            for (uint i = 0; i < Math.Min(users.Total(), 50); i++) // Limit to 50 users to avoid too many API calls
+            {
+                var user = users.Next(i);
+                if (user != null)
+                {
+                    try
+                    {
+                        CIMTPositionArray userPositions;
+                        if (GetUserPositions(out userPositions, user.Login()))
+                        {
+                            positionArrays.Add(userPositions);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Continue with next user if this one fails
+                        continue;
+                    }
+                }
+            }
+            
+            return positionArrays;
         }
     }
 }
