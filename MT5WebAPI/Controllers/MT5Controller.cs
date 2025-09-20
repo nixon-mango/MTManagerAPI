@@ -942,6 +942,31 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetUserDiscoveryInfo()
+        {
+            try
+            {
+                var discoveryInfo = new
+                {
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    real_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => !name.ToLower().Contains("demo") && !name.ToLower().Contains("manager")).Count(),
+                    demo_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("demo")).Count(),
+                    manager_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("manager")).Count(),
+                    sample_real_groups = _api.GetLoadedGroupNames().Where(name => !name.ToLower().Contains("demo") && !name.ToLower().Contains("manager")).Take(10).ToList(),
+                    sample_demo_groups = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("demo")).Take(5).ToList(),
+                    sample_manager_groups = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("manager")).Take(5).ToList(),
+                    api_connected = _api.IsConnected,
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(discoveryInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"User discovery info error: {ex.Message}"));
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);

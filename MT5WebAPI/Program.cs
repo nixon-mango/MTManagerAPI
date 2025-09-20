@@ -101,6 +101,7 @@ namespace MT5WebAPI
                 Console.WriteLine("  PUT  /api/groups/{name}  - Update group settings");
                 Console.WriteLine("  GET  /api/status         - Get connection status");
                 Console.WriteLine("  GET  /api/debug/groups   - Get groups loading debug info");
+                Console.WriteLine("  GET  /api/debug/user-discovery - Get user discovery debug info");
                 Console.WriteLine("  POST /api/debug/reload-groups - Force reload groups from file");
                 Console.WriteLine();
                 Console.WriteLine("Press 'q' to quit the server...");

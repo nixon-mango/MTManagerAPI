@@ -184,14 +184,23 @@ namespace MT5ManagerAPI
         /// <returns>List of all users from real groups</returns>
         public List<UserInfo> GetAllRealUsers()
         {
-            // Your server's most important real groups
-            string[] realGroups = { 
-                "real", "real\\Executive", "real\\NORMAL", "real\\Vipin Zero 1000",
-                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\VIP A", "real\\VIP B",
-                "real\\PRO A", "real\\PRO B", "real\\Standard", "real\\Executive 25",
-                "real\\Vipin Zero", "real\\Vipin Zero 2500", "real\\GOLD 1", "real\\GOLD 2"
-            };
-            return GetAllUsers(realGroups);
+            // Get real group names from loaded groups (JSON + created groups)
+            var realGroupNames = _createdGroups.Values
+                .Where(g => !g.IsDemo && !g.Name.ToLower().Contains("manager"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential real groups
+            if (realGroupNames.Length == 0)
+            {
+                realGroupNames = new string[] { 
+                    "real", "real\\Executive", "real\\NORMAL", "real\\VIP A", "real\\VIP B",
+                    "real\\PRO A", "real\\PRO B", "real\\Standard"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllRealUsers: Using {realGroupNames.Length} real groups for user discovery");
+            return GetAllUsers(realGroupNames);
         }
 
         /// <summary>
@@ -200,12 +209,24 @@ namespace MT5ManagerAPI
         /// <returns>List of all users from demo groups</returns>
         public List<UserInfo> GetAllDemoUsers()
         {
-            string[] demoGroups = { 
-                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
-                "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
-                "demo\\stock", "demo\\SPREAD 19"
-            };
-            return GetAllUsers(demoGroups);
+            // Get demo group names from loaded groups (JSON + created groups)
+            var demoGroupNames = _createdGroups.Values
+                .Where(g => g.IsDemo)
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential demo groups
+            if (demoGroupNames.Length == 0)
+            {
+                demoGroupNames = new string[] { 
+                    "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                    "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
+                    "demo\\stock", "demo\\SPREAD 19"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllDemoUsers: Using {demoGroupNames.Length} demo groups for user discovery");
+            return GetAllUsers(demoGroupNames);
         }
 
         /// <summary>
@@ -214,11 +235,23 @@ namespace MT5ManagerAPI
         /// <returns>List of all VIP users</returns>
         public List<UserInfo> GetAllVIPUsers()
         {
-            string[] vipGroups = { 
-                "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
-                "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
-            };
-            return GetAllUsers(vipGroups);
+            // Get VIP group names from loaded groups (JSON + created groups)
+            var vipGroupNames = _createdGroups.Values
+                .Where(g => g.Name.ToLower().Contains("vip") || g.Name.ToLower().Contains("executive"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential VIP groups
+            if (vipGroupNames.Length == 0)
+            {
+                vipGroupNames = new string[] { 
+                    "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
+                    "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllVIPUsers: Using {vipGroupNames.Length} VIP groups for user discovery");
+            return GetAllUsers(vipGroupNames);
         }
 
         /// <summary>
@@ -227,10 +260,22 @@ namespace MT5ManagerAPI
         /// <returns>List of all manager users</returns>
         public List<UserInfo> GetAllManagerUsers()
         {
-            string[] managerGroups = { 
-                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
-            };
-            return GetAllUsers(managerGroups);
+            // Get manager group names from loaded groups (JSON + created groups)
+            var managerGroupNames = _createdGroups.Values
+                .Where(g => g.Name.ToLower().Contains("manager"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential manager groups
+            if (managerGroupNames.Length == 0)
+            {
+                managerGroupNames = new string[] { 
+                    "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllManagerUsers: Using {managerGroupNames.Length} manager groups for user discovery");
+            return GetAllUsers(managerGroupNames);
         }
 
         /// <summary>
@@ -276,21 +321,55 @@ namespace MT5ManagerAPI
                 }
                 else
                 {
-                    // Start with your working real groups
-                    var realUsers = GetAllRealUsers();
-                    foreach (var user in realUsers)
+                    // Use all loaded groups for comprehensive user discovery
+                    var allGroupNames = GetAllGroupNames();
+                    
+                    if (allGroupNames.Length > 0)
                     {
-                        if (!seenLogins.Contains(user.Login))
+                        System.Diagnostics.Debug.WriteLine($"GetAllUsers: Using {allGroupNames.Length} loaded groups for user discovery");
+                        
+                        // Get users from all loaded groups
+                        foreach (string groupName in allGroupNames)
                         {
-                            allUsers.Add(user);
-                            seenLogins.Add(user.Login);
+                            if (string.IsNullOrEmpty(groupName)) continue;
+
+                            try
+                            {
+                                var users = GetUsersInGroup(groupName);
+                                foreach (var user in users)
+                                {
+                                    if (!seenLogins.Contains(user.Login))
+                                    {
+                                        allUsers.Add(user);
+                                        seenLogins.Add(user.Login);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log error but continue with other groups
+                                System.Diagnostics.Debug.WriteLine($"Error getting users for group {groupName}: {ex.Message}");
+                            }
                         }
                     }
+                    else
+                    {
+                        // Fallback: Start with essential real groups if no groups loaded
+                        System.Diagnostics.Debug.WriteLine("GetAllUsers: No groups loaded, using fallback real groups");
+                        var realUsers = GetAllRealUsers();
+                        foreach (var user in realUsers)
+                        {
+                            if (!seenLogins.Contains(user.Login))
+                            {
+                                allUsers.Add(user);
+                                seenLogins.Add(user.Login);
+                            }
+                        }
 
-                    // Then try to discover more users by expanding the search
-                    // This uses the working real users as a foundation to discover more
-                    var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
-                    allUsers.AddRange(expandedUsers);
+                        // Then try to discover more users by expanding the search
+                        var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
+                        allUsers.AddRange(expandedUsers);
+                    }
                 }
 
                 return allUsers;
@@ -573,27 +652,24 @@ namespace MT5ManagerAPI
                 // we'll discover groups by examining users and collecting unique group names
                 var knownGroups = new HashSet<string>();
                 
-                // First, get groups from known categories
-                string[] commonGroups = {
-                    // Real groups
-                    "real", "real\\Executive", "real\\NORMAL", "real\\Vipin Zero 1000",
-                    "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\VIP A", "real\\VIP B",
-                    "real\\PRO A", "real\\PRO B", "real\\Standard", "real\\Executive 25",
-                    "real\\Vipin Zero", "real\\Vipin Zero 2500", "real\\GOLD 1", "real\\GOLD 2",
-                    
-                    // Demo groups
-                    "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
-                    "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
-                    "demo\\stock", "demo\\SPREAD 19", "demo\\Ruble", "demo\\goldnolev",
-                    
-                    // Manager groups
-                    "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master",
-                    
-                    // Basic groups
-                    "abc", "coverage", "preliminary"
-                };
+                // Get all group names from loaded groups (JSON + created groups) for discovery
+                var allKnownGroupNames = _createdGroups.Keys.ToArray();
+                
+                // If no groups loaded yet, fall back to essential groups for initial discovery
+                if (allKnownGroupNames.Length == 0)
+                {
+                    allKnownGroupNames = new string[] {
+                        // Essential groups for fallback
+                        "real", "real\\Executive", "real\\NORMAL", "real\\VIP A", "real\\VIP B",
+                        "demo\\2", "demo\\CFD", "demo\\Executive", "demo\\VIP", "demo\\forex.hedged",
+                        "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master",
+                        "abc", "coverage", "preliminary"
+                    };
+                }
 
-                foreach (string groupName in commonGroups)
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Attempting user discovery for {allKnownGroupNames.Length} known groups");
+
+                foreach (string groupName in allKnownGroupNames)
                 {
                     if (string.IsNullOrEmpty(groupName) || knownGroups.Contains(groupName))
                         continue;
@@ -617,26 +693,10 @@ namespace MT5ManagerAPI
                     }
                 }
 
-                // Also discover groups from existing users
-                try
-                {
-                    var allUsers = GetAllUsers();
-                    var discoveredGroups = allUsers.Select(u => u.Group).Distinct().Where(g => !knownGroups.Contains(g));
-                    
-                    foreach (string groupName in discoveredGroups)
-                    {
-                        if (string.IsNullOrEmpty(groupName))
-                            continue;
-
-                        var usersInGroup = allUsers.Where(u => u.Group == groupName).ToList();
-                        var groupInfo = CreateGroupInfoFromUsers(groupName, usersInGroup);
-                        groups.Add(groupInfo);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error discovering additional groups: {ex.Message}");
-                }
+                // Note: We skip the additional user-based group discovery here to avoid recursion
+                // since GetAllUsers() calls GetAllRealUsers() which would call GetAllUsers() again.
+                // The comprehensive groups from JSON should cover all groups anyway.
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Skipping user-based discovery to avoid recursion. Using comprehensive groups from JSON instead.");
 
                 // Add any groups that were created through the API but may not have users yet
                 int addedFromCreated = 0;
@@ -1061,6 +1121,14 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
+        /// Get all group names (for internal use in user discovery)
+        /// </summary>
+        private string[] GetAllGroupNames()
+        {
+            return _createdGroups.Keys.ToArray();
+        }
+
+        /// <summary>
         /// Get count of loaded groups (for debugging)
         /// </summary>
         public int GetLoadedGroupsCount()
@@ -1069,11 +1137,19 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
-        /// Get names of first 10 loaded groups (for debugging)
+        /// Get names of first N loaded groups (for debugging)
         /// </summary>
         public List<string> GetLoadedGroupNames(int limit = 10)
         {
             return _createdGroups.Keys.Take(limit).ToList();
+        }
+
+        /// <summary>
+        /// Get all loaded group names (for debugging)
+        /// </summary>
+        public List<string> GetLoadedGroupNames()
+        {
+            return _createdGroups.Keys.ToList();
         }
 
         /// <summary>

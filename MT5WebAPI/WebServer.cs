@@ -124,6 +124,10 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.ReloadGroups();
                     }
+                    else if (path == "/api/debug/user-discovery" && method == "GET")
+                    {
+                        responseText = _controller.GetUserDiscoveryInfo();
+                    }
                     else if (path.StartsWith("/api/user/") && path.EndsWith("/group") && method == "GET")
                     {
                         string loginStr = ExtractFromPath(path, "/api/user/", "/group");
