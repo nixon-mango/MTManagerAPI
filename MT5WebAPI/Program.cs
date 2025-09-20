@@ -95,6 +95,10 @@ namespace MT5WebAPI
                 Console.WriteLine("  GET  /api/group/{name}/positions - Get group positions");
                 Console.WriteLine("  POST /api/balance        - Perform balance operation");
                 Console.WriteLine("  GET  /api/user/{login}/deals - Get user deals");
+                Console.WriteLine("  GET  /api/groups         - Get all groups");
+                Console.WriteLine("  GET  /api/groups/{name}  - Get specific group info");
+                Console.WriteLine("  POST /api/groups         - Create new group");
+                Console.WriteLine("  PUT  /api/groups/{name}  - Update group settings");
                 Console.WriteLine("  GET  /api/status         - Get connection status");
                 Console.WriteLine();
                 Console.WriteLine("Press 'q' to quit the server...");

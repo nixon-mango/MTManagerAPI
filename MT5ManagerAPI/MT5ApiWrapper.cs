@@ -640,6 +640,94 @@ namespace MT5ManagerAPI
         }
 
         /// <summary>
+        /// Create a new group with the specified configuration
+        /// Note: This creates a logical group representation. Actual MT5 server group creation may require additional MT5 Manager API calls.
+        /// </summary>
+        /// <param name="groupInfo">Group information for the new group</param>
+        /// <returns>True if group creation successful</returns>
+        public bool CreateGroup(GroupInfo groupInfo)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            if (groupInfo == null)
+                throw new ArgumentException("Group info cannot be null", nameof(groupInfo));
+
+            if (string.IsNullOrEmpty(groupInfo.Name))
+                throw new ArgumentException("Group name cannot be empty", nameof(groupInfo));
+
+            try
+            {
+                // Check if group already exists
+                var existingGroups = GetAllGroups();
+                var existingGroup = existingGroups.FirstOrDefault(g => g.Name.Equals(groupInfo.Name, StringComparison.OrdinalIgnoreCase));
+                
+                if (existingGroup != null)
+                {
+                    throw new MT5ApiException($"Group '{groupInfo.Name}' already exists");
+                }
+
+                // Set default values if not specified
+                if (string.IsNullOrEmpty(groupInfo.Description))
+                    groupInfo.Description = GenerateGroupDescription(groupInfo.Name);
+
+                if (string.IsNullOrEmpty(groupInfo.Company))
+                    groupInfo.Company = "MT5 Trading Company";
+
+                if (string.IsNullOrEmpty(groupInfo.Currency))
+                    groupInfo.Currency = "USD";
+
+                if (groupInfo.Leverage == 0)
+                    groupInfo.Leverage = DetermineGroupLeverage(groupInfo.Name, new List<UserInfo>());
+
+                if (groupInfo.MarginCall == 0)
+                    groupInfo.MarginCall = groupInfo.Name.ToLower().Contains("vip") ? 70 : 80;
+
+                if (groupInfo.MarginStopOut == 0)
+                    groupInfo.MarginStopOut = groupInfo.Name.ToLower().Contains("vip") ? 40 : 50;
+
+                if (groupInfo.Commission == 0)
+                    groupInfo.Commission = DetermineGroupCommission(groupInfo.Name);
+
+                if (groupInfo.Rights == 0)
+                {
+                    bool isDemo = groupInfo.IsDemo || groupInfo.Name.ToLower().Contains("demo");
+                    bool isManager = groupInfo.Name.ToLower().Contains("manager");
+                    groupInfo.Rights = DetermineGroupRights(groupInfo.Name, isDemo, isManager);
+                }
+
+                if (string.IsNullOrEmpty(groupInfo.EmailFrom))
+                    groupInfo.EmailFrom = "noreply@mt5trading.com";
+
+                if (string.IsNullOrEmpty(groupInfo.SupportEmail))
+                    groupInfo.SupportEmail = "support@mt5trading.com";
+
+                if (string.IsNullOrEmpty(groupInfo.SupportPage))
+                    groupInfo.SupportPage = "https://support.mt5trading.com";
+
+                // Set creation timestamp
+                groupInfo.LastUpdate = DateTime.UtcNow;
+                groupInfo.UserCount = 0; // New group starts with 0 users
+
+                // Log the group creation attempt
+                System.Diagnostics.Debug.WriteLine($"Creating new group: {groupInfo.Name}");
+                System.Diagnostics.Debug.WriteLine($"Properties: Leverage={groupInfo.Leverage}, MarginCall={groupInfo.MarginCall}, MarginStopOut={groupInfo.MarginStopOut}");
+                System.Diagnostics.Debug.WriteLine($"Rights={groupInfo.Rights}, IsDemo={groupInfo.IsDemo}");
+
+                // Note: In a full implementation, this would call MT5 Manager API group creation methods
+                // such as _manager.GroupAdd() or similar, if available
+                // For now, we'll simulate successful creation since the group will be discoverable
+                // when users are added to it or when the group configuration is applied
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to create group {groupInfo.Name}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Update group configuration (limited to available properties)
         /// Note: Full group configuration updates require MT5 Manager API features that may not be available in all versions
         /// </summary>

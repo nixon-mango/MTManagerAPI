@@ -70,6 +70,7 @@
     <Compile Include="Models\ApiResponse.cs" />
     <Compile Include="Models\SecurityConfig.cs" />
     <Compile Include="Models\GroupUpdateRequest.cs" />
+    <Compile Include="Models\GroupCreateRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -185,6 +185,10 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.GetAllGroups();
                     }
+                    else if (path == "/api/groups" && method == "POST")
+                    {
+                        responseText = _controller.CreateGroup(GetRequestBody(request));
+                    }
                     else if (path.StartsWith("/api/groups/") && method == "GET")
                     {
                         string groupName = ExtractFromPath(path, "/api/groups/", "");
