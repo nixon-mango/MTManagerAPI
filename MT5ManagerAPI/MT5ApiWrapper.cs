@@ -14,6 +14,7 @@ namespace MT5ManagerAPI
         private MT5Manager.CManager _manager;
         private bool _isConnected = false;
         private bool _disposed = false;
+        private Dictionary<string, GroupInfo> _createdGroups = new Dictionary<string, GroupInfo>();
 
         /// <summary>
         /// Gets whether the API is currently connected to MT5 server
@@ -81,6 +82,8 @@ namespace MT5ManagerAPI
                 {
                     _manager.Logout();
                     _isConnected = false;
+                    // Clear created groups on disconnect to maintain clean state
+                    _createdGroups.Clear();
                 }
             }
             catch (Exception ex)
@@ -631,6 +634,16 @@ namespace MT5ManagerAPI
                     System.Diagnostics.Debug.WriteLine($"Error discovering additional groups: {ex.Message}");
                 }
 
+                // Add any groups that were created through the API but may not have users yet
+                foreach (var createdGroup in _createdGroups.Values)
+                {
+                    // Only add if not already discovered
+                    if (!groups.Any(g => g.Name.Equals(createdGroup.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        groups.Add(createdGroup);
+                    }
+                }
+
                 return groups.OrderBy(g => g.Name).ToList();
             }
             catch (Exception ex)
@@ -658,7 +671,12 @@ namespace MT5ManagerAPI
 
             try
             {
-                // Check if group already exists
+                // Check if group already exists (both in discovered groups and created groups)
+                if (_createdGroups.ContainsKey(groupInfo.Name))
+                {
+                    throw new MT5ApiException($"Group '{groupInfo.Name}' already exists");
+                }
+
                 var existingGroups = GetAllGroups();
                 var existingGroup = existingGroups.FirstOrDefault(g => g.Name.Equals(groupInfo.Name, StringComparison.OrdinalIgnoreCase));
                 
@@ -714,10 +732,13 @@ namespace MT5ManagerAPI
                 System.Diagnostics.Debug.WriteLine($"Properties: Leverage={groupInfo.Leverage}, MarginCall={groupInfo.MarginCall}, MarginStopOut={groupInfo.MarginStopOut}");
                 System.Diagnostics.Debug.WriteLine($"Rights={groupInfo.Rights}, IsDemo={groupInfo.IsDemo}");
 
+                // Store the created group in memory so it can be retrieved by GetAllGroups
+                _createdGroups[groupInfo.Name] = groupInfo;
+
                 // Note: In a full implementation, this would call MT5 Manager API group creation methods
                 // such as _manager.GroupAdd() or similar, if available
-                // For now, we'll simulate successful creation since the group will be discoverable
-                // when users are added to it or when the group configuration is applied
+                // For now, we store the group configuration in memory and it will be available
+                // through GetAllGroups until the application restarts
 
                 return true;
             }
@@ -767,6 +788,12 @@ namespace MT5ManagerAPI
                 groupInfo.Name = groupName;
                 groupInfo.LastUpdate = DateTime.UtcNow;
                 groupInfo.UserCount = existingUsers.Count;
+                
+                // If this is a created group, update it in our storage
+                if (_createdGroups.ContainsKey(groupName))
+                {
+                    _createdGroups[groupName] = groupInfo;
+                }
                 
                 // Log the update attempt
                 System.Diagnostics.Debug.WriteLine($"Group update requested for: {groupName}");

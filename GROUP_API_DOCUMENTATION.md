@@ -323,9 +323,10 @@ curl -X PUT http://localhost:8080/api/groups/real\\MyGroup \
 
 1. **Authentication**: All endpoints require API key authentication if security is enabled.
 2. **Group Creation**: The API creates logical group configurations. Actual MT5 server integration may require additional setup.
-3. **Validation**: Group names are validated to ensure proper format and prevent duplicates.
-4. **Defaults**: The API applies intelligent defaults based on group naming conventions.
-5. **Flexibility**: All group properties can be customized during creation or updated later.
+3. **Group Persistence**: Created groups are stored in memory and will appear in the `GET /api/groups` response immediately after creation. Groups persist until the application is restarted or the connection is reset.
+4. **Validation**: Group names are validated to ensure proper format and prevent duplicates.
+5. **Defaults**: The API applies intelligent defaults based on group naming conventions.
+6. **Flexibility**: All group properties can be customized during creation or updated later.
 
 ## Integration with MT5 Manager API
 
