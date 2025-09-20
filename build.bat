@@ -22,10 +22,15 @@ if %ERRORLEVEL% equ 0 (
     echo.
     echo ✓ Build completed successfully!
     echo.
+    echo Copying groups data to debug folders...
+    call copy-groups-data.bat
+    echo.
     echo Next steps:
     echo 1. Copy your MT5 Manager API DLL files to the bin\Debug directories
-    echo 2. Run setup-dlls.bat to copy DLLs to all projects
+    echo 2. Run setup-dlls.bat to copy DLLs to all projects  
     echo 3. Test with MT5ConsoleApp.exe
+    echo.
+    echo ✓ Groups data has been copied to all debug folders
 ) else (
     echo.
     echo ✗ Build failed. Please check the error messages above.

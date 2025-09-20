@@ -13,7 +13,6 @@ namespace MT5WebAPI
             // Parse command line arguments
             string host = "localhost";  // Default to localhost (no admin required)
             int port = 8080;
-            bool enableSecurity = false;
             bool generateKey = false;
 
             for (int i = 0; i < args.Length; i++)
@@ -23,7 +22,10 @@ namespace MT5WebAPI
                 else if (args[i] == "--port" && i + 1 < args.Length)
                     int.TryParse(args[i + 1], out port);
                 else if (args[i] == "--secure")
-                    enableSecurity = true;
+                {
+                    // Enable security by calling the EnableSecurity method
+                    Models.SecurityConfig.Instance.EnableSecurity();
+                }
                 else if (args[i] == "--generate-key")
                     generateKey = true;
                 else if (args[i] == "--help")
@@ -93,7 +95,14 @@ namespace MT5WebAPI
                 Console.WriteLine("  GET  /api/group/{name}/positions - Get group positions");
                 Console.WriteLine("  POST /api/balance        - Perform balance operation");
                 Console.WriteLine("  GET  /api/user/{login}/deals - Get user deals");
+                Console.WriteLine("  GET  /api/groups         - Get all groups");
+                Console.WriteLine("  GET  /api/groups/{name}  - Get specific group info");
+                Console.WriteLine("  POST /api/groups         - Create new group");
+                Console.WriteLine("  PUT  /api/groups/{name}  - Update group settings");
                 Console.WriteLine("  GET  /api/status         - Get connection status");
+                Console.WriteLine("  GET  /api/debug/groups   - Get groups loading debug info");
+                Console.WriteLine("  GET  /api/debug/user-discovery - Get user discovery debug info");
+                Console.WriteLine("  POST /api/debug/reload-groups - Force reload groups from file");
                 Console.WriteLine();
                 Console.WriteLine("Press 'q' to quit the server...");
 

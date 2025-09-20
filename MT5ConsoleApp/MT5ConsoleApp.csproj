@@ -76,4 +76,13 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  
+  <!-- Copy groups data file to output directory -->
+  <Target Name="CopyGroupsData" AfterTargets="Build">
+    <ItemGroup>
+      <GroupsDataFile Include="$(SolutionDir)complete_mt5_groups.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GroupsDataFile)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="Exists('$(SolutionDir)complete_mt5_groups.json')" />
+    <Message Text="Copied groups data file to output directory" Importance="high" Condition="Exists('$(SolutionDir)complete_mt5_groups.json')" />
+  </Target>
 </Project>

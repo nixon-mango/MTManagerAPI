@@ -669,6 +669,95 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string CreateGroup(string requestBody)
+        {
+            try
+            {
+                var createRequest = JsonConvert.DeserializeObject<GroupCreateRequest>(requestBody);
+                if (createRequest == null)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
+
+                if (string.IsNullOrEmpty(createRequest.Name))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Group name is required"));
+
+                // Validate group name format
+                if (!IsValidGroupName(createRequest.Name))
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError(
+                        "Invalid group name format. Use format like 'real\\GroupName' or 'demo\\GroupName'"));
+                }
+
+                // Determine if this is a demo group
+                bool isDemo = createRequest.IsDemo ?? createRequest.Name.ToLower().Contains("demo");
+
+                // Create new group info with defaults
+                var newGroup = new MT5ManagerAPI.Models.GroupInfo
+                {
+                    Name = createRequest.Name,
+                    Description = createRequest.Description ?? $"New group: {createRequest.Name}",
+                    Company = createRequest.Company ?? "MT5 Trading Company",
+                    Currency = createRequest.Currency ?? "USD",
+                    Leverage = createRequest.Leverage ?? (isDemo ? 500U : 100U),
+                    DepositMin = createRequest.DepositMin ?? (isDemo ? 0 : 100),
+                    DepositMax = createRequest.DepositMax ?? 1000000,
+                    CreditLimit = createRequest.CreditLimit ?? 0,
+                    MarginCall = createRequest.MarginCall ?? (createRequest.Name.ToLower().Contains("vip") ? 70 : 80),
+                    MarginStopOut = createRequest.MarginStopOut ?? (createRequest.Name.ToLower().Contains("vip") ? 40 : 50),
+                    InterestRate = createRequest.InterestRate ?? 0,
+                    Commission = createRequest.Commission ?? DetermineCommissionForNewGroup(createRequest.Name),
+                    CommissionType = createRequest.CommissionType ?? 0U,
+                    AgentCommission = createRequest.AgentCommission ?? 0,
+                    FreeMarginMode = 0U,
+                    Rights = createRequest.Rights ?? DetermineRightsForNewGroup(createRequest.Name, isDemo),
+                    CheckPassword = true,
+                    Timeout = createRequest.Timeout ?? (createRequest.Name.ToLower().Contains("manager") ? 0U : 60U),
+                    OHLCMaxCount = 65000U,
+                    NewsMode = createRequest.NewsMode ?? 2U,
+                    ReportsMode = createRequest.ReportsMode ?? 1U,
+                    EmailFrom = createRequest.EmailFrom ?? "noreply@mt5trading.com",
+                    SMTPServer = "",
+                    SMTPLogin = "",
+                    SMTPPassword = "",
+                    SupportPage = createRequest.SupportPage ?? "https://support.mt5trading.com",
+                    SupportEmail = createRequest.SupportEmail ?? "support@mt5trading.com",
+                    Templates = "templates\\",
+                    CopyQuotes = false,
+                    Reports = true,
+                    DefaultDeposit = createRequest.DefaultDeposit ?? (isDemo ? 10000 : 0),
+                    DefaultCredit = createRequest.DefaultCredit ?? 0,
+                    ArchivePeriod = createRequest.ArchivePeriod ?? 90U,
+                    ArchiveMaxRecords = createRequest.ArchiveMaxRecords ?? 100000U,
+                    MarginFreeMode = 0U,
+                    IsDemo = isDemo,
+                    UserCount = 0,
+                    LastUpdate = DateTime.UtcNow,
+                    CustomProperties = new Dictionary<string, object>()
+                };
+
+                // Attempt to create the group
+                bool success = _api.CreateGroup(newGroup);
+
+                if (success)
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(new
+                    {
+                        message = "Group created successfully",
+                        group = newGroup.ToSimpleObject(),
+                        created_at = DateTime.UtcNow,
+                        group_type = isDemo ? "demo" : (createRequest.Name.ToLower().Contains("manager") ? "manager" : "real")
+                    }));
+                }
+                else
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Failed to create group"));
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Create group error: {ex.Message}"));
+            }
+        }
+
         public string UpdateGroup(string groupName, string requestBody)
         {
             try
@@ -773,6 +862,109 @@ namespace MT5WebAPI.Controllers
                 changes["rights"] = new { from = original.Rights, to = updated.Rights };
 
             return changes;
+        }
+
+        private bool IsValidGroupName(string groupName)
+        {
+            if (string.IsNullOrEmpty(groupName))
+                return false;
+
+            // Check for valid group name format (should contain a backslash for category)
+            // Examples: "real\MyGroup", "demo\TestGroup", "managers\admin"
+            return groupName.Contains("\\") || groupName.Contains("/");
+        }
+
+        private double DetermineCommissionForNewGroup(string groupName)
+        {
+            string name = groupName.ToLower();
+            
+            if (name.Contains("zero"))
+                return 0.0;
+            else if (name.Contains("vip") || name.Contains("executive"))
+                return 0.0;
+            else if (name.Contains("demo"))
+                return 0.0;
+            else
+                return 7.0; // $7 per lot for standard groups
+        }
+
+        private uint DetermineRightsForNewGroup(string groupName, bool isDemo)
+        {
+            bool isManager = groupName.ToLower().Contains("manager");
+            
+            if (isManager)
+                return 127U; // Full rights for managers
+            else if (isDemo)
+                return 71U;  // Demo rights
+            else
+                return 67U;  // Standard real trading rights
+        }
+
+        public string GetGroupsDebugInfo()
+        {
+            try
+            {
+                var debugInfo = new
+                {
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    loaded_group_names = _api.GetLoadedGroupNames(20),
+                    api_connected = _api.IsConnected,
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(debugInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Debug info error: {ex.Message}"));
+            }
+        }
+
+        public string ReloadGroups()
+        {
+            try
+            {
+                _api.ReloadGroupsFromFile();
+                
+                var reloadInfo = new
+                {
+                    message = "Groups reloaded from file",
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    sample_groups = _api.GetLoadedGroupNames(10),
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(reloadInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Reload groups error: {ex.Message}"));
+            }
+        }
+
+        public string GetUserDiscoveryInfo()
+        {
+            try
+            {
+                var discoveryInfo = new
+                {
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    real_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => !name.ToLower().Contains("demo") && !name.ToLower().Contains("manager")).Count(),
+                    demo_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("demo")).Count(),
+                    manager_groups_for_discovery = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("manager")).Count(),
+                    sample_real_groups = _api.GetLoadedGroupNames().Where(name => !name.ToLower().Contains("demo") && !name.ToLower().Contains("manager")).Take(10).ToList(),
+                    sample_demo_groups = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("demo")).Take(5).ToList(),
+                    sample_manager_groups = _api.GetLoadedGroupNames().Where(name => name.ToLower().Contains("manager")).Take(5).ToList(),
+                    api_connected = _api.IsConnected,
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(discoveryInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"User discovery info error: {ex.Message}"));
+            }
         }
 
         public void Dispose()
