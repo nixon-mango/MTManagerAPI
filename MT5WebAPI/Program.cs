@@ -23,8 +23,8 @@ namespace MT5WebAPI
                     int.TryParse(args[i + 1], out port);
                 else if (args[i] == "--secure")
                 {
-                    // Enable security by updating the configuration
-                    Models.SecurityConfig.Instance.RequireApiKey = true;
+                    // Enable security by calling the EnableSecurity method
+                    Models.SecurityConfig.Instance.EnableSecurity();
                 }
                 else if (args[i] == "--generate-key")
                     generateKey = true;
