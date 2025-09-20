@@ -587,6 +587,194 @@ namespace MT5WebAPI.Controllers
             }
         }
 
+        public string GetAllGroups()
+        {
+            try
+            {
+                var groups = _api.GetAllGroups();
+                
+                // Create a response with summary statistics
+                var response = new
+                {
+                    groups = groups.Select(g => g.ToSimpleObject()).ToList(),
+                    summary = new
+                    {
+                        total_groups = groups.Count,
+                        real_groups = groups.Count(g => !g.IsDemo && !g.Name.ToLower().Contains("manager")),
+                        demo_groups = groups.Count(g => g.IsDemo),
+                        manager_groups = groups.Count(g => g.Name.ToLower().Contains("manager")),
+                        total_users = groups.Sum(g => g.UserCount),
+                        groups_by_type = groups.GroupBy(g => 
+                        {
+                            if (g.IsDemo) return "demo";
+                            else if (g.Name.ToLower().Contains("manager")) return "manager";
+                            else return "real";
+                        }).Select(g => new { type = g.Key, count = g.Count() }).ToList(),
+                        last_update = DateTime.UtcNow
+                    }
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(response));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get all groups error: {ex.Message}"));
+            }
+        }
+
+        public string GetGroup(string groupName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(groupName))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Group name is required"));
+
+                var groups = _api.GetAllGroups();
+                var group = groups.FirstOrDefault(g => g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                
+                if (group == null)
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Group '{groupName}' not found"));
+                }
+
+                // Get additional statistics for this specific group
+                var users = _api.GetUsersInGroup(groupName);
+                var response = new
+                {
+                    group = group.ToSimpleObject(),
+                    statistics = new
+                    {
+                        user_count = users.Count,
+                        active_users = users.Count(u => (DateTime.Now - u.LastAccess).Days <= 30),
+                        avg_leverage = users.Count > 0 ? users.Where(u => u.Leverage > 0).Average(u => u.Leverage) : 0,
+                        registration_range = users.Count > 0 ? new
+                        {
+                            earliest = users.Min(u => u.Registration),
+                            latest = users.Max(u => u.Registration)
+                        } : null,
+                        countries = users.Where(u => !string.IsNullOrEmpty(u.Country))
+                                        .GroupBy(u => u.Country)
+                                        .Select(g => new { country = g.Key, count = g.Count() })
+                                        .OrderByDescending(x => x.count)
+                                        .Take(10)
+                                        .ToList()
+                    }
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(response));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Get group error: {ex.Message}"));
+            }
+        }
+
+        public string UpdateGroup(string groupName, string requestBody)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(groupName))
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Group name is required"));
+
+                var updateRequest = JsonConvert.DeserializeObject<GroupUpdateRequest>(requestBody);
+                if (updateRequest == null)
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Invalid request body"));
+
+                // Get the existing group first
+                var groups = _api.GetAllGroups();
+                var existingGroup = groups.FirstOrDefault(g => g.Name.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                
+                if (existingGroup == null)
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Group '{groupName}' not found"));
+                }
+
+                // Create updated group info
+                var updatedGroup = new MT5ManagerAPI.Models.GroupInfo
+                {
+                    Name = groupName,
+                    Description = updateRequest.Description ?? existingGroup.Description,
+                    Company = updateRequest.Company ?? existingGroup.Company,
+                    Currency = updateRequest.Currency ?? existingGroup.Currency,
+                    Leverage = updateRequest.Leverage ?? existingGroup.Leverage,
+                    DepositMin = updateRequest.DepositMin ?? existingGroup.DepositMin,
+                    DepositMax = updateRequest.DepositMax ?? existingGroup.DepositMax,
+                    CreditLimit = updateRequest.CreditLimit ?? existingGroup.CreditLimit,
+                    MarginCall = updateRequest.MarginCall ?? existingGroup.MarginCall,
+                    MarginStopOut = updateRequest.MarginStopOut ?? existingGroup.MarginStopOut,
+                    InterestRate = updateRequest.InterestRate ?? existingGroup.InterestRate,
+                    Commission = updateRequest.Commission ?? existingGroup.Commission,
+                    CommissionType = updateRequest.CommissionType ?? existingGroup.CommissionType,
+                    AgentCommission = updateRequest.AgentCommission ?? existingGroup.AgentCommission,
+                    Rights = updateRequest.Rights ?? existingGroup.Rights,
+                    Timeout = updateRequest.Timeout ?? existingGroup.Timeout,
+                    NewsMode = updateRequest.NewsMode ?? existingGroup.NewsMode,
+                    ReportsMode = updateRequest.ReportsMode ?? existingGroup.ReportsMode,
+                    EmailFrom = updateRequest.EmailFrom ?? existingGroup.EmailFrom,
+                    SupportEmail = updateRequest.SupportEmail ?? existingGroup.SupportEmail,
+                    SupportPage = updateRequest.SupportPage ?? existingGroup.SupportPage,
+                    DefaultDeposit = updateRequest.DefaultDeposit ?? existingGroup.DefaultDeposit,
+                    DefaultCredit = updateRequest.DefaultCredit ?? existingGroup.DefaultCredit,
+                    LastUpdate = DateTime.UtcNow
+                };
+
+                // Attempt to update the group
+                bool success = _api.UpdateGroup(groupName, updatedGroup);
+                
+                if (success)
+                {
+                    var response = new
+                    {
+                        message = "Group updated successfully",
+                        group_name = groupName,
+                        updated_properties = GetUpdatedProperties(existingGroup, updatedGroup),
+                        timestamp = DateTime.UtcNow
+                    };
+                    
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(response));
+                }
+                else
+                {
+                    return JsonConvert.SerializeObject(ApiResponse<object>.CreateError("Failed to update group"));
+                }
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Update group error: {ex.Message}"));
+            }
+        }
+
+        private object GetUpdatedProperties(MT5ManagerAPI.Models.GroupInfo original, MT5ManagerAPI.Models.GroupInfo updated)
+        {
+            var changes = new Dictionary<string, object>();
+
+            if (original.Description != updated.Description)
+                changes["description"] = new { from = original.Description, to = updated.Description };
+            
+            if (original.Company != updated.Company)
+                changes["company"] = new { from = original.Company, to = updated.Company };
+                
+            if (original.Currency != updated.Currency)
+                changes["currency"] = new { from = original.Currency, to = updated.Currency };
+                
+            if (original.Leverage != updated.Leverage)
+                changes["leverage"] = new { from = original.Leverage, to = updated.Leverage };
+                
+            if (original.MarginCall != updated.MarginCall)
+                changes["margin_call"] = new { from = original.MarginCall, to = updated.MarginCall };
+                
+            if (original.MarginStopOut != updated.MarginStopOut)
+                changes["margin_stop_out"] = new { from = original.MarginStopOut, to = updated.MarginStopOut };
+                
+            if (original.Commission != updated.Commission)
+                changes["commission"] = new { from = original.Commission, to = updated.Commission };
+                
+            if (original.Rights != updated.Rights)
+                changes["rights"] = new { from = original.Rights, to = updated.Rights };
+
+            return changes;
+        }
+
         public void Dispose()
         {
             Dispose(true);

@@ -181,6 +181,20 @@ namespace MT5WebAPI
                         string groupName = ExtractFromPath(path, "/api/group/", "/positions");
                         responseText = _controller.GetGroupPositions(groupName);
                     }
+                    else if (path == "/api/groups" && method == "GET")
+                    {
+                        responseText = _controller.GetAllGroups();
+                    }
+                    else if (path.StartsWith("/api/groups/") && method == "GET")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/groups/", "");
+                        responseText = _controller.GetGroup(groupName);
+                    }
+                    else if (path.StartsWith("/api/groups/") && method == "PUT")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/groups/", "");
+                        responseText = _controller.UpdateGroup(groupName, GetRequestBody(request));
+                    }
                     else if (path == "/api/balance" && method == "POST")
                     {
                         responseText = _controller.PerformBalanceOperation(GetRequestBody(request));

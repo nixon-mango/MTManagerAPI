@@ -606,6 +606,270 @@
           }
         }
       }
+    },
+    "/api/groups": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get all groups",
+        "description": "Retrieves all available groups from the MT5 server with comprehensive statistics and configuration details.",
+        "operationId": "getAllGroups",
+        "responses": {
+          "200": {
+            "description": "Groups retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "groups": {
+                              "type": "array",
+                              "items": {"$ref": "#/components/schemas/GroupInfo"}
+                            },
+                            "summary": {
+                              "type": "object",
+                              "properties": {
+                                "total_groups": {"type": "integer", "example": 15},
+                                "real_groups": {"type": "integer", "example": 8},
+                                "demo_groups": {"type": "integer", "example": 5},
+                                "manager_groups": {"type": "integer", "example": 2},
+                                "total_users": {"type": "integer", "example": 1250},
+                                "groups_by_type": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {"type": "string", "example": "real"},
+                                      "count": {"type": "integer", "example": 8}
+                                    }
+                                  }
+                                },
+                                "last_update": {"type": "string", "format": "date-time"}
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/UnauthorizedError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        },
+        "security": [{"ApiKeyAuth": []}]
+      }
+    },
+    "/api/groups/{groupName}": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get specific group details",
+        "description": "Retrieves detailed information about a specific group including statistics and user data.",
+        "operationId": "getGroup",
+        "parameters": [
+          {
+            "name": "groupName",
+            "in": "path",
+            "required": true,
+            "description": "Name of the group to retrieve",
+            "schema": {"type": "string"},
+            "examples": {
+              "real_group": {"value": "real\\Executive", "summary": "Real trading group"},
+              "demo_group": {"value": "demo\\VIP", "summary": "Demo group"},
+              "manager_group": {"value": "managers\\administrators", "summary": "Manager group"}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "group": {"$ref": "#/components/schemas/GroupInfo"},
+                            "statistics": {
+                              "type": "object",
+                              "properties": {
+                                "user_count": {"type": "integer", "example": 156},
+                                "active_users": {"type": "integer", "example": 89},
+                                "avg_leverage": {"type": "number", "example": 100.5},
+                                "registration_range": {
+                                  "type": "object",
+                                  "properties": {
+                                    "earliest": {"type": "string", "format": "date-time"},
+                                    "latest": {"type": "string", "format": "date-time"}
+                                  }
+                                },
+                                "countries": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "country": {"type": "string", "example": "United States"},
+                                      "count": {"type": "integer", "example": 45}
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"},
+                "example": {
+                  "success": false,
+                  "error": "Group 'nonexistent' not found",
+                  "timestamp": "2024-01-15T10:30:00Z"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/UnauthorizedError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        },
+        "security": [{"ApiKeyAuth": []}]
+      },
+      "put": {
+        "tags": ["Groups"],
+        "summary": "Update group configuration",
+        "description": "Updates the configuration settings for a specific group. Only provided fields will be updated.",
+        "operationId": "updateGroup",
+        "parameters": [
+          {
+            "name": "groupName",
+            "in": "path",
+            "required": true,
+            "description": "Name of the group to update",
+            "schema": {"type": "string"},
+            "examples": {
+              "real_group": {"value": "real\\Executive", "summary": "Real trading group"},
+              "demo_group": {"value": "demo\\VIP", "summary": "Demo group"}
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/GroupUpdateRequest"},
+              "examples": {
+                "leverage_update": {
+                  "summary": "Update leverage and margin settings",
+                  "value": {
+                    "leverage": 200,
+                    "margin_call": 70,
+                    "margin_stop_out": 40,
+                    "description": "Updated VIP group with higher leverage"
+                  }
+                },
+                "commission_update": {
+                  "summary": "Update commission settings",
+                  "value": {
+                    "commission": 5.0,
+                    "commission_type": 0,
+                    "description": "Reduced commission for VIP clients"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Group updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "message": {"type": "string", "example": "Group updated successfully"},
+                            "group_name": {"type": "string", "example": "real\\Executive"},
+                            "updated_properties": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "from": {"type": "string"},
+                                  "to": {"type": "string"}
+                                }
+                              },
+                              "example": {
+                                "leverage": {"from": "100", "to": "200"},
+                                "margin_call": {"from": "80", "to": "70"}
+                              }
+                            },
+                            "timestamp": {"type": "string", "format": "date-time"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"},
+                "example": {
+                  "success": false,
+                  "error": "Group 'nonexistent' not found",
+                  "timestamp": "2024-01-15T10:30:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ApiResponse"},
+                "example": {
+                  "success": false,
+                  "error": "Invalid request body",
+                  "timestamp": "2024-01-15T10:30:00Z"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/UnauthorizedError"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        },
+        "security": [{"ApiKeyAuth": []}]
+      }
     }
   },
   "components": {
@@ -753,6 +1017,53 @@
           "time": {"type": "string", "format": "date-time", "example": "2024-01-15T10:30:00Z"},
           "comment": {"type": "string", "example": "Market order"}
         }
+      },
+      "GroupInfo": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "example": "real\\Executive", "description": "Group name"},
+          "description": {"type": "string", "example": "VIP trading group: real\\Executive", "description": "Group description"},
+          "company": {"type": "string", "example": "MT5 Trading Company", "description": "Company name"},
+          "currency": {"type": "string", "example": "USD", "description": "Group currency"},
+          "leverage": {"type": "integer", "format": "int32", "example": 200, "description": "Default leverage"},
+          "margin_call": {"type": "number", "format": "double", "example": 70.0, "description": "Margin call level (percentage)"},
+          "margin_stop_out": {"type": "number", "format": "double", "example": 40.0, "description": "Stop out level (percentage)"},
+          "commission": {"type": "number", "format": "double", "example": 0.0, "description": "Commission amount"},
+          "commission_type": {"type": "integer", "format": "int32", "example": 0, "description": "Commission type (0=money, 1=pips, 2=percent)"},
+          "rights": {"type": "integer", "format": "int32", "example": 67, "description": "User rights flags"},
+          "is_demo": {"type": "boolean", "example": false, "description": "Whether this is a demo group"},
+          "user_count": {"type": "integer", "format": "int32", "example": 156, "description": "Number of users in group"},
+          "last_update": {"type": "string", "format": "date-time", "example": "2024-01-15T10:30:00Z", "description": "Last update timestamp"}
+        },
+        "required": ["name", "description", "currency", "leverage", "is_demo", "user_count"]
+      },
+      "GroupUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "description": {"type": "string", "example": "Updated VIP group description", "description": "Group description"},
+          "company": {"type": "string", "example": "MT5 Trading Company", "description": "Company name"},
+          "currency": {"type": "string", "example": "USD", "description": "Group currency"},
+          "leverage": {"type": "integer", "format": "int32", "example": 200, "description": "Default leverage"},
+          "deposit_min": {"type": "number", "format": "double", "example": 1000.0, "description": "Minimum deposit"},
+          "deposit_max": {"type": "number", "format": "double", "example": 1000000.0, "description": "Maximum deposit"},
+          "credit_limit": {"type": "number", "format": "double", "example": 0.0, "description": "Credit limit"},
+          "margin_call": {"type": "number", "format": "double", "example": 70.0, "description": "Margin call level (percentage)"},
+          "margin_stop_out": {"type": "number", "format": "double", "example": 40.0, "description": "Stop out level (percentage)"},
+          "interest_rate": {"type": "number", "format": "double", "example": 0.0, "description": "Interest rate"},
+          "commission": {"type": "number", "format": "double", "example": 5.0, "description": "Commission amount"},
+          "commission_type": {"type": "integer", "format": "int32", "example": 0, "description": "Commission type (0=money, 1=pips, 2=percent)"},
+          "agent_commission": {"type": "number", "format": "double", "example": 0.0, "description": "Agent commission"},
+          "rights": {"type": "integer", "format": "int32", "example": 67, "description": "User rights flags"},
+          "timeout": {"type": "integer", "format": "int32", "example": 60, "description": "Connection timeout in seconds"},
+          "news_mode": {"type": "integer", "format": "int32", "example": 2, "description": "News mode (0=disabled, 1=headers, 2=full)"},
+          "reports_mode": {"type": "integer", "format": "int32", "example": 1, "description": "Reports mode"},
+          "email_from": {"type": "string", "format": "email", "example": "noreply@mt5trading.com", "description": "Email from address"},
+          "support_page": {"type": "string", "format": "uri", "example": "https://support.mt5trading.com", "description": "Support page URL"},
+          "support_email": {"type": "string", "format": "email", "example": "support@mt5trading.com", "description": "Support email"},
+          "default_deposit": {"type": "number", "format": "double", "example": 10000.0, "description": "Default deposit amount"},
+          "default_credit": {"type": "number", "format": "double", "example": 0.0, "description": "Default credit amount"}
+        },
+        "description": "Request body for updating group configuration. All fields are optional - only provided fields will be updated."
       }
     }
   }
