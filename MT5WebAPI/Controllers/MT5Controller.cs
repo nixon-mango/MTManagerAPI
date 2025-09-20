@@ -900,6 +900,48 @@ namespace MT5WebAPI.Controllers
                 return 67U;  // Standard real trading rights
         }
 
+        public string GetGroupsDebugInfo()
+        {
+            try
+            {
+                var debugInfo = new
+                {
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    loaded_group_names = _api.GetLoadedGroupNames(20),
+                    api_connected = _api.IsConnected,
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(debugInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Debug info error: {ex.Message}"));
+            }
+        }
+
+        public string ReloadGroups()
+        {
+            try
+            {
+                _api.ReloadGroupsFromFile();
+                
+                var reloadInfo = new
+                {
+                    message = "Groups reloaded from file",
+                    loaded_groups_count = _api.GetLoadedGroupsCount(),
+                    sample_groups = _api.GetLoadedGroupNames(10),
+                    timestamp = DateTime.UtcNow
+                };
+
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateSuccess(reloadInfo));
+            }
+            catch (Exception ex)
+            {
+                return JsonConvert.SerializeObject(ApiResponse<object>.CreateError($"Reload groups error: {ex.Message}"));
+            }
+        }
+
         public void Dispose()
         {
             Dispose(true);

@@ -639,14 +639,21 @@ namespace MT5ManagerAPI
                 }
 
                 // Add any groups that were created through the API but may not have users yet
+                int addedFromCreated = 0;
                 foreach (var createdGroup in _createdGroups.Values)
                 {
                     // Only add if not already discovered
                     if (!groups.Any(g => g.Name.Equals(createdGroup.Name, StringComparison.OrdinalIgnoreCase)))
                     {
                         groups.Add(createdGroup);
+                        addedFromCreated++;
                     }
                 }
+
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Discovered {groups.Count - addedFromCreated} groups from MT5 server");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Added {addedFromCreated} groups from created/loaded groups");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Total groups returned: {groups.Count}");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Created groups in memory: {_createdGroups.Count}");
 
                 return groups.OrderBy(g => g.Name).ToList();
             }
@@ -1021,18 +1028,28 @@ namespace MT5ManagerAPI
                         var comprehensiveGroups = JsonConvert.DeserializeObject<Dictionary<string, GroupInfo>>(json);
                         if (comprehensiveGroups != null)
                         {
+                            System.Diagnostics.Debug.WriteLine($"Successfully deserialized {comprehensiveGroups.Count} groups from comprehensive file");
+                            
                             // Load comprehensive groups as baseline, but don't overwrite user-created groups
+                            int loadedCount = 0;
                             foreach (var kvp in comprehensiveGroups)
                             {
                                 if (!_createdGroups.ContainsKey(kvp.Key))
                                 {
                                     _createdGroups[kvp.Key] = kvp.Value;
+                                    loadedCount++;
                                 }
                             }
-                            System.Diagnostics.Debug.WriteLine($"Loaded {comprehensiveGroups.Count} comprehensive groups as baseline");
+                            
+                            System.Diagnostics.Debug.WriteLine($"Loaded {loadedCount} new comprehensive groups as baseline");
+                            System.Diagnostics.Debug.WriteLine($"Total groups in memory: {_createdGroups.Count}");
                             
                             // Save the merged data to the regular storage file
                             SaveCreatedGroupsToFile();
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("Failed to deserialize comprehensive groups - result was null");
                         }
                     }
                 }
@@ -1041,6 +1058,30 @@ namespace MT5ManagerAPI
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading comprehensive groups data: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Get count of loaded groups (for debugging)
+        /// </summary>
+        public int GetLoadedGroupsCount()
+        {
+            return _createdGroups.Count;
+        }
+
+        /// <summary>
+        /// Get names of first 10 loaded groups (for debugging)
+        /// </summary>
+        public List<string> GetLoadedGroupNames(int limit = 10)
+        {
+            return _createdGroups.Keys.Take(limit).ToList();
+        }
+
+        /// <summary>
+        /// Force reload groups from file (for debugging)
+        /// </summary>
+        public void ReloadGroupsFromFile()
+        {
+            LoadCreatedGroupsFromFile();
         }
 
         /// <summary>
