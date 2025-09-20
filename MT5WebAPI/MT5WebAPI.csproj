@@ -69,6 +69,7 @@
     <Compile Include="Controllers\MT5Controller.cs" />
     <Compile Include="Models\ApiResponse.cs" />
     <Compile Include="Models\SecurityConfig.cs" />
+    <Compile Include="Models\GroupUpdateRequest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

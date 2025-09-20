@@ -13,7 +13,6 @@ namespace MT5WebAPI
             // Parse command line arguments
             string host = "localhost";  // Default to localhost (no admin required)
             int port = 8080;
-            bool enableSecurity = false;
             bool generateKey = false;
 
             for (int i = 0; i < args.Length; i++)
@@ -23,7 +22,10 @@ namespace MT5WebAPI
                 else if (args[i] == "--port" && i + 1 < args.Length)
                     int.TryParse(args[i + 1], out port);
                 else if (args[i] == "--secure")
-                    enableSecurity = true;
+                {
+                    // Enable security by updating the configuration
+                    Models.SecurityConfig.Instance.RequireApiKey = true;
+                }
                 else if (args[i] == "--generate-key")
                     generateKey = true;
                 else if (args[i] == "--help")
