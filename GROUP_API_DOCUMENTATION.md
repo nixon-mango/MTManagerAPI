@@ -44,6 +44,11 @@ Creates a new trading group with the specified configuration.
 #### Optional Fields
 All other fields are optional and will use intelligent defaults based on the group name and type.
 
+#### Validation
+- Group name format is validated at the API level
+- Duplicate group names are automatically detected and prevented
+- All validation errors return descriptive error messages
+
 #### Response
 ```json
 {

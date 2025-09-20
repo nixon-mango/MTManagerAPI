@@ -1,5 +1,4 @@
 using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace MT5WebAPI.Models
 {
@@ -11,7 +10,6 @@ namespace MT5WebAPI.Models
         /// <summary>
         /// Group name (required) - e.g., "real\\MyNewGroup", "demo\\TestGroup"
         /// </summary>
-        [Required]
         public string Name { get; set; }
 
         /// <summary>
