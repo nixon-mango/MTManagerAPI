@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MetaQuotes.MT5CommonAPI;
 using MT5ManagerAPI.Models;
+using Newtonsoft.Json;
 
 namespace MT5ManagerAPI
 {
@@ -15,6 +17,7 @@ namespace MT5ManagerAPI
         private bool _isConnected = false;
         private bool _disposed = false;
         private Dictionary<string, GroupInfo> _createdGroups = new Dictionary<string, GroupInfo>();
+        private readonly string _groupStorageFile = "created_groups.json";
 
         /// <summary>
         /// Gets whether the API is currently connected to MT5 server
@@ -27,6 +30,7 @@ namespace MT5ManagerAPI
         public MT5ApiWrapper()
         {
             _manager = new MT5Manager.CManager();
+            LoadCreatedGroupsFromFile();
         }
 
         /// <summary>
@@ -732,13 +736,14 @@ namespace MT5ManagerAPI
                 System.Diagnostics.Debug.WriteLine($"Properties: Leverage={groupInfo.Leverage}, MarginCall={groupInfo.MarginCall}, MarginStopOut={groupInfo.MarginStopOut}");
                 System.Diagnostics.Debug.WriteLine($"Rights={groupInfo.Rights}, IsDemo={groupInfo.IsDemo}");
 
-                // Store the created group in memory so it can be retrieved by GetAllGroups
+                // Store the created group in memory and persist to file
                 _createdGroups[groupInfo.Name] = groupInfo;
+                SaveCreatedGroupsToFile();
 
                 // Note: In a full implementation, this would call MT5 Manager API group creation methods
                 // such as _manager.GroupAdd() or similar, if available
-                // For now, we store the group configuration in memory and it will be available
-                // through GetAllGroups until the application restarts
+                // For now, we store the group configuration in memory and file, making it persistent
+                // across application restarts until actual MT5 server group creation is available
 
                 return true;
             }
@@ -793,6 +798,7 @@ namespace MT5ManagerAPI
                 if (_createdGroups.ContainsKey(groupName))
                 {
                     _createdGroups[groupName] = groupInfo;
+                    SaveCreatedGroupsToFile();
                 }
                 
                 // Log the update attempt
@@ -945,6 +951,51 @@ namespace MT5ManagerAPI
                 return 71U;  // Demo rights
             else
                 return 67U;  // Standard real trading rights
+        }
+
+        /// <summary>
+        /// Load created groups from persistent storage file
+        /// </summary>
+        private void LoadCreatedGroupsFromFile()
+        {
+            try
+            {
+                if (File.Exists(_groupStorageFile))
+                {
+                    var json = File.ReadAllText(_groupStorageFile);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        var loadedGroups = JsonConvert.DeserializeObject<Dictionary<string, GroupInfo>>(json);
+                        if (loadedGroups != null)
+                        {
+                            _createdGroups = loadedGroups;
+                            System.Diagnostics.Debug.WriteLine($"Loaded {_createdGroups.Count} created groups from file");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading created groups from file: {ex.Message}");
+                _createdGroups = new Dictionary<string, GroupInfo>();
+            }
+        }
+
+        /// <summary>
+        /// Save created groups to persistent storage file
+        /// </summary>
+        private void SaveCreatedGroupsToFile()
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(_createdGroups, Formatting.Indented);
+                File.WriteAllText(_groupStorageFile, json);
+                System.Diagnostics.Debug.WriteLine($"Saved {_createdGroups.Count} created groups to file");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving created groups to file: {ex.Message}");
+            }
         }
 
         /// <summary>
