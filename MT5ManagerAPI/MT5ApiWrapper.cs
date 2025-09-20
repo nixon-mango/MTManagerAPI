@@ -973,11 +973,54 @@ namespace MT5ManagerAPI
                         }
                     }
                 }
+                else
+                {
+                    // Try to load from comprehensive groups file if available
+                    LoadComprehensiveGroupsData();
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading created groups from file: {ex.Message}");
                 _createdGroups = new Dictionary<string, GroupInfo>();
+            }
+        }
+
+        /// <summary>
+        /// Load comprehensive MT5 groups data if available
+        /// </summary>
+        private void LoadComprehensiveGroupsData()
+        {
+            try
+            {
+                string comprehensiveFile = "complete_mt5_groups.json";
+                if (File.Exists(comprehensiveFile))
+                {
+                    var json = File.ReadAllText(comprehensiveFile);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        var comprehensiveGroups = JsonConvert.DeserializeObject<Dictionary<string, GroupInfo>>(json);
+                        if (comprehensiveGroups != null)
+                        {
+                            // Load comprehensive groups as baseline, but don't overwrite user-created groups
+                            foreach (var kvp in comprehensiveGroups)
+                            {
+                                if (!_createdGroups.ContainsKey(kvp.Key))
+                                {
+                                    _createdGroups[kvp.Key] = kvp.Value;
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine($"Loaded {comprehensiveGroups.Count} comprehensive groups as baseline");
+                            
+                            // Save the merged data to the regular storage file
+                            SaveCreatedGroupsToFile();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading comprehensive groups data: {ex.Message}");
             }
         }
 
