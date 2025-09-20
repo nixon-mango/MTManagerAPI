@@ -722,15 +722,15 @@ namespace MT5ManagerAPI
                 MarginStopOut = isVIP ? 40 : 50,
                 InterestRate = 0,
                 Commission = DetermineGroupCommission(groupName),
-                CommissionType = 0,
+                CommissionType = 0U,
                 AgentCommission = 0,
-                FreeMarginMode = 0,
+                FreeMarginMode = 0U,
                 Rights = DetermineGroupRights(groupName, isDemo, isManager),
                 CheckPassword = true,
-                Timeout = isManager ? 0 : 60,
-                OHLCMaxCount = 65000,
-                NewsMode = 2,
-                ReportsMode = 1,
+                Timeout = (uint)(isManager ? 0 : 60),
+                OHLCMaxCount = 65000U,
+                NewsMode = 2U,
+                ReportsMode = 1U,
                 EmailFrom = "noreply@mt5trading.com",
                 SMTPServer = "",
                 SMTPLogin = "",
@@ -742,9 +742,9 @@ namespace MT5ManagerAPI
                 Reports = true,
                 DefaultDeposit = isDemo ? 10000 : 0,
                 DefaultCredit = 0,
-                ArchivePeriod = 90,
-                ArchiveMaxRecords = 100000,
-                MarginFreeMode = 0,
+                ArchivePeriod = 90U,
+                ArchiveMaxRecords = 100000U,
+                MarginFreeMode = 0U,
                 IsDemo = isDemo,
                 UserCount = users.Count,
                 LastUpdate = DateTime.UtcNow
@@ -793,13 +793,13 @@ namespace MT5ManagerAPI
             // Default leverage based on group name
             string name = groupName.ToLower();
             if (name.Contains("demo"))
-                return 500;
+                return 500U;
             else if (name.Contains("vip") || name.Contains("executive"))
-                return 200;
+                return 200U;
             else if (name.Contains("zero"))
-                return 1000;
+                return 1000U;
             else
-                return 100;
+                return 100U;
         }
 
         /// <summary>
@@ -825,11 +825,11 @@ namespace MT5ManagerAPI
         private uint DetermineGroupRights(string groupName, bool isDemo, bool isManager)
         {
             if (isManager)
-                return 127; // Full rights for managers
+                return 127U; // Full rights for managers
             else if (isDemo)
-                return 71;  // Demo rights
+                return 71U;  // Demo rights
             else
-                return 67;  // Standard real trading rights
+                return 67U;  // Standard real trading rights
         }
 
         /// <summary>
