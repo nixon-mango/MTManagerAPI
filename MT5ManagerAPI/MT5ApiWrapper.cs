@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MetaQuotes.MT5CommonAPI;
 using MT5ManagerAPI.Models;
+using Newtonsoft.Json;
 
 namespace MT5ManagerAPI
 {
@@ -14,6 +16,8 @@ namespace MT5ManagerAPI
         private MT5Manager.CManager _manager;
         private bool _isConnected = false;
         private bool _disposed = false;
+        private Dictionary<string, GroupInfo> _createdGroups = new Dictionary<string, GroupInfo>();
+        private readonly string _groupStorageFile = "created_groups.json";
 
         /// <summary>
         /// Gets whether the API is currently connected to MT5 server
@@ -26,6 +30,7 @@ namespace MT5ManagerAPI
         public MT5ApiWrapper()
         {
             _manager = new MT5Manager.CManager();
+            LoadCreatedGroupsFromFile();
         }
 
         /// <summary>
@@ -81,6 +86,8 @@ namespace MT5ManagerAPI
                 {
                     _manager.Logout();
                     _isConnected = false;
+                    // Clear created groups on disconnect to maintain clean state
+                    _createdGroups.Clear();
                 }
             }
             catch (Exception ex)
@@ -177,14 +184,23 @@ namespace MT5ManagerAPI
         /// <returns>List of all users from real groups</returns>
         public List<UserInfo> GetAllRealUsers()
         {
-            // Your server's most important real groups
-            string[] realGroups = { 
-                "real", "real\\Executive", "real\\NORMAL", "real\\Vipin Zero 1000",
-                "real\\ALLWIN PREMIUM", "real\\ALLWIN PREMIUM 1", "real\\VIP A", "real\\VIP B",
-                "real\\PRO A", "real\\PRO B", "real\\Standard", "real\\Executive 25",
-                "real\\Vipin Zero", "real\\Vipin Zero 2500", "real\\GOLD 1", "real\\GOLD 2"
-            };
-            return GetAllUsers(realGroups);
+            // Get real group names from loaded groups (JSON + created groups)
+            var realGroupNames = _createdGroups.Values
+                .Where(g => !g.IsDemo && !g.Name.ToLower().Contains("manager"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential real groups
+            if (realGroupNames.Length == 0)
+            {
+                realGroupNames = new string[] { 
+                    "real", "real\\Executive", "real\\NORMAL", "real\\VIP A", "real\\VIP B",
+                    "real\\PRO A", "real\\PRO B", "real\\Standard"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllRealUsers: Using {realGroupNames.Length} real groups for user discovery");
+            return GetAllUsers(realGroupNames);
         }
 
         /// <summary>
@@ -193,12 +209,24 @@ namespace MT5ManagerAPI
         /// <returns>List of all users from demo groups</returns>
         public List<UserInfo> GetAllDemoUsers()
         {
-            string[] demoGroups = { 
-                "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
-                "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
-                "demo\\stock", "demo\\SPREAD 19"
-            };
-            return GetAllUsers(demoGroups);
+            // Get demo group names from loaded groups (JSON + created groups)
+            var demoGroupNames = _createdGroups.Values
+                .Where(g => g.IsDemo)
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential demo groups
+            if (demoGroupNames.Length == 0)
+            {
+                demoGroupNames = new string[] { 
+                    "demo\\2", "demo\\AllWin Capitals Limited-Demo", "demo\\CFD", "demo\\Executive", 
+                    "demo\\PRO", "demo\\PS GOLD", "demo\\VIP", "demo\\forex.hedged", "demo\\gold", 
+                    "demo\\stock", "demo\\SPREAD 19"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllDemoUsers: Using {demoGroupNames.Length} demo groups for user discovery");
+            return GetAllUsers(demoGroupNames);
         }
 
         /// <summary>
@@ -207,11 +235,23 @@ namespace MT5ManagerAPI
         /// <returns>List of all VIP users</returns>
         public List<UserInfo> GetAllVIPUsers()
         {
-            string[] vipGroups = { 
-                "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
-                "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
-            };
-            return GetAllUsers(vipGroups);
+            // Get VIP group names from loaded groups (JSON + created groups)
+            var vipGroupNames = _createdGroups.Values
+                .Where(g => g.Name.ToLower().Contains("vip") || g.Name.ToLower().Contains("executive"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential VIP groups
+            if (vipGroupNames.Length == 0)
+            {
+                vipGroupNames = new string[] { 
+                    "demo\\VIP", "real\\VIP A", "real\\VIP B", "real\\ALLWIN VIP 1",
+                    "real\\Saiful VIP", "real\\Executive", "real\\Executive 25", "real\\Executive Swap"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllVIPUsers: Using {vipGroupNames.Length} VIP groups for user discovery");
+            return GetAllUsers(vipGroupNames);
         }
 
         /// <summary>
@@ -220,10 +260,22 @@ namespace MT5ManagerAPI
         /// <returns>List of all manager users</returns>
         public List<UserInfo> GetAllManagerUsers()
         {
-            string[] managerGroups = { 
-                "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
-            };
-            return GetAllUsers(managerGroups);
+            // Get manager group names from loaded groups (JSON + created groups)
+            var managerGroupNames = _createdGroups.Values
+                .Where(g => g.Name.ToLower().Contains("manager"))
+                .Select(g => g.Name)
+                .ToArray();
+
+            // If no groups loaded yet, fall back to essential manager groups
+            if (managerGroupNames.Length == 0)
+            {
+                managerGroupNames = new string[] { 
+                    "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master"
+                };
+            }
+
+            System.Diagnostics.Debug.WriteLine($"GetAllManagerUsers: Using {managerGroupNames.Length} manager groups for user discovery");
+            return GetAllUsers(managerGroupNames);
         }
 
         /// <summary>
@@ -269,21 +321,55 @@ namespace MT5ManagerAPI
                 }
                 else
                 {
-                    // Start with your working real groups
-                    var realUsers = GetAllRealUsers();
-                    foreach (var user in realUsers)
+                    // Use all loaded groups for comprehensive user discovery
+                    var allGroupNames = GetAllGroupNames();
+                    
+                    if (allGroupNames.Length > 0)
                     {
-                        if (!seenLogins.Contains(user.Login))
+                        System.Diagnostics.Debug.WriteLine($"GetAllUsers: Using {allGroupNames.Length} loaded groups for user discovery");
+                        
+                        // Get users from all loaded groups
+                        foreach (string groupName in allGroupNames)
                         {
-                            allUsers.Add(user);
-                            seenLogins.Add(user.Login);
+                            if (string.IsNullOrEmpty(groupName)) continue;
+
+                            try
+                            {
+                                var users = GetUsersInGroup(groupName);
+                                foreach (var user in users)
+                                {
+                                    if (!seenLogins.Contains(user.Login))
+                                    {
+                                        allUsers.Add(user);
+                                        seenLogins.Add(user.Login);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // Log error but continue with other groups
+                                System.Diagnostics.Debug.WriteLine($"Error getting users for group {groupName}: {ex.Message}");
+                            }
                         }
                     }
+                    else
+                    {
+                        // Fallback: Start with essential real groups if no groups loaded
+                        System.Diagnostics.Debug.WriteLine("GetAllUsers: No groups loaded, using fallback real groups");
+                        var realUsers = GetAllRealUsers();
+                        foreach (var user in realUsers)
+                        {
+                            if (!seenLogins.Contains(user.Login))
+                            {
+                                allUsers.Add(user);
+                                seenLogins.Add(user.Login);
+                            }
+                        }
 
-                    // Then try to discover more users by expanding the search
-                    // This uses the working real users as a foundation to discover more
-                    var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
-                    allUsers.AddRange(expandedUsers);
+                        // Then try to discover more users by expanding the search
+                        var expandedUsers = ExpandUserDiscovery(realUsers, seenLogins);
+                        allUsers.AddRange(expandedUsers);
+                    }
                 }
 
                 return allUsers;
@@ -546,6 +632,548 @@ namespace MT5ManagerAPI
             catch (Exception ex)
             {
                 throw new MT5ApiException($"Failed to get group for login {login}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Get all available groups from the MT5 server
+        /// </summary>
+        /// <returns>List of all groups</returns>
+        public List<GroupInfo> GetAllGroups()
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            try
+            {
+                var groups = new List<GroupInfo>();
+
+                // Since direct group enumeration may not be available in all MT5 API versions,
+                // we'll discover groups by examining users and collecting unique group names
+                var knownGroups = new HashSet<string>();
+                
+                // Get all group names from loaded groups (JSON + created groups) for discovery
+                var allKnownGroupNames = _createdGroups.Keys.ToArray();
+                
+                // If no groups loaded yet, fall back to essential groups for initial discovery
+                if (allKnownGroupNames.Length == 0)
+                {
+                    allKnownGroupNames = new string[] {
+                        // Essential groups for fallback
+                        "real", "real\\Executive", "real\\NORMAL", "real\\VIP A", "real\\VIP B",
+                        "demo\\2", "demo\\CFD", "demo\\Executive", "demo\\VIP", "demo\\forex.hedged",
+                        "managers\\administrators", "managers\\board", "managers\\dealers", "managers\\master",
+                        "abc", "coverage", "preliminary"
+                    };
+                }
+
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Attempting user discovery for {allKnownGroupNames.Length} known groups");
+
+                foreach (string groupName in allKnownGroupNames)
+                {
+                    if (string.IsNullOrEmpty(groupName) || knownGroups.Contains(groupName))
+                        continue;
+
+                    try
+                    {
+                        var users = GetUsersInGroup(groupName);
+                        if (users.Count > 0)
+                        {
+                            knownGroups.Add(groupName);
+                            
+                            // Create group info based on the group name and users
+                            var groupInfo = CreateGroupInfoFromUsers(groupName, users);
+                            groups.Add(groupInfo);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Group doesn't exist or access denied, skip it
+                        continue;
+                    }
+                }
+
+                // Note: We skip the additional user-based group discovery here to avoid recursion
+                // since GetAllUsers() calls GetAllRealUsers() which would call GetAllUsers() again.
+                // The comprehensive groups from JSON should cover all groups anyway.
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Skipping user-based discovery to avoid recursion. Using comprehensive groups from JSON instead.");
+
+                // Add any groups that were created through the API but may not have users yet
+                int addedFromCreated = 0;
+                foreach (var createdGroup in _createdGroups.Values)
+                {
+                    // Only add if not already discovered
+                    if (!groups.Any(g => g.Name.Equals(createdGroup.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        groups.Add(createdGroup);
+                        addedFromCreated++;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Discovered {groups.Count - addedFromCreated} groups from MT5 server");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Added {addedFromCreated} groups from created/loaded groups");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Total groups returned: {groups.Count}");
+                System.Diagnostics.Debug.WriteLine($"GetAllGroups: Created groups in memory: {_createdGroups.Count}");
+
+                return groups.OrderBy(g => g.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to get all groups: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Create a new group with the specified configuration
+        /// Note: This creates a logical group representation. Actual MT5 server group creation may require additional MT5 Manager API calls.
+        /// </summary>
+        /// <param name="groupInfo">Group information for the new group</param>
+        /// <returns>True if group creation successful</returns>
+        public bool CreateGroup(GroupInfo groupInfo)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            if (groupInfo == null)
+                throw new ArgumentException("Group info cannot be null", nameof(groupInfo));
+
+            if (string.IsNullOrEmpty(groupInfo.Name))
+                throw new ArgumentException("Group name cannot be empty", nameof(groupInfo));
+
+            try
+            {
+                // Check if group already exists (both in discovered groups and created groups)
+                if (_createdGroups.ContainsKey(groupInfo.Name))
+                {
+                    throw new MT5ApiException($"Group '{groupInfo.Name}' already exists");
+                }
+
+                var existingGroups = GetAllGroups();
+                var existingGroup = existingGroups.FirstOrDefault(g => g.Name.Equals(groupInfo.Name, StringComparison.OrdinalIgnoreCase));
+                
+                if (existingGroup != null)
+                {
+                    throw new MT5ApiException($"Group '{groupInfo.Name}' already exists");
+                }
+
+                // Set default values if not specified
+                if (string.IsNullOrEmpty(groupInfo.Description))
+                    groupInfo.Description = GenerateGroupDescription(groupInfo.Name);
+
+                if (string.IsNullOrEmpty(groupInfo.Company))
+                    groupInfo.Company = "MT5 Trading Company";
+
+                if (string.IsNullOrEmpty(groupInfo.Currency))
+                    groupInfo.Currency = "USD";
+
+                if (groupInfo.Leverage == 0)
+                    groupInfo.Leverage = DetermineGroupLeverage(groupInfo.Name, new List<UserInfo>());
+
+                if (groupInfo.MarginCall == 0)
+                    groupInfo.MarginCall = groupInfo.Name.ToLower().Contains("vip") ? 70 : 80;
+
+                if (groupInfo.MarginStopOut == 0)
+                    groupInfo.MarginStopOut = groupInfo.Name.ToLower().Contains("vip") ? 40 : 50;
+
+                if (groupInfo.Commission == 0)
+                    groupInfo.Commission = DetermineGroupCommission(groupInfo.Name);
+
+                if (groupInfo.Rights == 0)
+                {
+                    bool isDemo = groupInfo.IsDemo || groupInfo.Name.ToLower().Contains("demo");
+                    bool isManager = groupInfo.Name.ToLower().Contains("manager");
+                    groupInfo.Rights = DetermineGroupRights(groupInfo.Name, isDemo, isManager);
+                }
+
+                if (string.IsNullOrEmpty(groupInfo.EmailFrom))
+                    groupInfo.EmailFrom = "noreply@mt5trading.com";
+
+                if (string.IsNullOrEmpty(groupInfo.SupportEmail))
+                    groupInfo.SupportEmail = "support@mt5trading.com";
+
+                if (string.IsNullOrEmpty(groupInfo.SupportPage))
+                    groupInfo.SupportPage = "https://support.mt5trading.com";
+
+                // Set creation timestamp
+                groupInfo.LastUpdate = DateTime.UtcNow;
+                groupInfo.UserCount = 0; // New group starts with 0 users
+
+                // Log the group creation attempt
+                System.Diagnostics.Debug.WriteLine($"Creating new group: {groupInfo.Name}");
+                System.Diagnostics.Debug.WriteLine($"Properties: Leverage={groupInfo.Leverage}, MarginCall={groupInfo.MarginCall}, MarginStopOut={groupInfo.MarginStopOut}");
+                System.Diagnostics.Debug.WriteLine($"Rights={groupInfo.Rights}, IsDemo={groupInfo.IsDemo}");
+
+                // Store the created group in memory and persist to file
+                _createdGroups[groupInfo.Name] = groupInfo;
+                SaveCreatedGroupsToFile();
+
+                // Note: In a full implementation, this would call MT5 Manager API group creation methods
+                // such as _manager.GroupAdd() or similar, if available
+                // For now, we store the group configuration in memory and file, making it persistent
+                // across application restarts until actual MT5 server group creation is available
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to create group {groupInfo.Name}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Update group configuration (limited to available properties)
+        /// Note: Full group configuration updates require MT5 Manager API features that may not be available in all versions
+        /// </summary>
+        /// <param name="groupName">Group name to update</param>
+        /// <param name="groupInfo">Updated group information</param>
+        /// <returns>True if update successful</returns>
+        public bool UpdateGroup(string groupName, GroupInfo groupInfo)
+        {
+            if (!_isConnected)
+                throw new InvalidOperationException("Not connected to MT5 server");
+
+            if (string.IsNullOrEmpty(groupName))
+                throw new ArgumentException("Group name cannot be empty", nameof(groupName));
+
+            if (groupInfo == null)
+                throw new ArgumentException("Group info cannot be null", nameof(groupInfo));
+
+            try
+            {
+                // Note: The MT5 Manager API may have limited group update capabilities
+                // This implementation focuses on what's commonly available
+                
+                // Verify the group exists by checking if it has users
+                var existingUsers = GetUsersInGroup(groupName);
+                
+                if (existingUsers.Count == 0)
+                {
+                    // Group might not exist or have no users
+                    System.Diagnostics.Debug.WriteLine($"Warning: Group {groupName} appears to have no users");
+                }
+
+                // For now, we'll simulate the update by storing the group info
+                // In a real implementation, this would use MT5 Manager API group update methods
+                // such as _manager.GroupUpdate() or similar, if available
+                
+                // Update the group info properties
+                groupInfo.Name = groupName;
+                groupInfo.LastUpdate = DateTime.UtcNow;
+                groupInfo.UserCount = existingUsers.Count;
+                
+                // If this is a created group, update it in our storage
+                if (_createdGroups.ContainsKey(groupName))
+                {
+                    _createdGroups[groupName] = groupInfo;
+                    SaveCreatedGroupsToFile();
+                }
+                
+                // Log the update attempt
+                System.Diagnostics.Debug.WriteLine($"Group update requested for: {groupName}");
+                System.Diagnostics.Debug.WriteLine($"Properties: Leverage={groupInfo.Leverage}, MarginCall={groupInfo.MarginCall}, MarginStopOut={groupInfo.MarginStopOut}");
+                
+                // Since we cannot directly update group settings in many MT5 API versions,
+                // we'll return true to indicate the request was processed
+                // In production, you would implement actual group update logic here
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new MT5ApiException($"Failed to update group {groupName}: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Create a GroupInfo object from a group name and its users
+        /// </summary>
+        /// <param name="groupName">Group name</param>
+        /// <param name="users">Users in the group</param>
+        /// <returns>GroupInfo object</returns>
+        private GroupInfo CreateGroupInfoFromUsers(string groupName, List<UserInfo> users)
+        {
+            bool isDemo = groupName.ToLower().Contains("demo");
+            bool isManager = groupName.ToLower().Contains("manager");
+            bool isVIP = groupName.ToLower().Contains("vip") || groupName.ToLower().Contains("executive");
+            
+            var groupInfo = new GroupInfo
+            {
+                Name = groupName,
+                Description = GenerateGroupDescription(groupName),
+                Company = "MT5 Trading Company",
+                Currency = "USD",
+                Leverage = DetermineGroupLeverage(groupName, users),
+                DepositMin = isDemo ? 0 : 100,
+                DepositMax = isVIP ? 10000000 : 1000000,
+                CreditLimit = 0,
+                MarginCall = isVIP ? 70 : 80,
+                MarginStopOut = isVIP ? 40 : 50,
+                InterestRate = 0,
+                Commission = DetermineGroupCommission(groupName),
+                CommissionType = 0U,
+                AgentCommission = 0,
+                FreeMarginMode = 0U,
+                Rights = DetermineGroupRights(groupName, isDemo, isManager),
+                CheckPassword = true,
+                Timeout = (uint)(isManager ? 0 : 60),
+                OHLCMaxCount = 65000U,
+                NewsMode = 2U,
+                ReportsMode = 1U,
+                EmailFrom = "noreply@mt5trading.com",
+                SMTPServer = "",
+                SMTPLogin = "",
+                SMTPPassword = "",
+                SupportPage = "https://support.mt5trading.com",
+                SupportEmail = "support@mt5trading.com",
+                Templates = "templates\\",
+                CopyQuotes = false,
+                Reports = true,
+                DefaultDeposit = isDemo ? 10000 : 0,
+                DefaultCredit = 0,
+                ArchivePeriod = 90U,
+                ArchiveMaxRecords = 100000U,
+                MarginFreeMode = 0U,
+                IsDemo = isDemo,
+                UserCount = users.Count,
+                LastUpdate = DateTime.UtcNow
+            };
+
+            return groupInfo;
+        }
+
+        /// <summary>
+        /// Generate a description for a group based on its name
+        /// </summary>
+        private string GenerateGroupDescription(string groupName)
+        {
+            if (string.IsNullOrEmpty(groupName))
+                return "Unknown Group";
+
+            string name = groupName.ToLower();
+            
+            if (name.Contains("demo"))
+                return $"Demo trading group: {groupName}";
+            else if (name.Contains("vip") || name.Contains("executive"))
+                return $"VIP trading group: {groupName}";
+            else if (name.Contains("manager"))
+                return $"Manager group: {groupName}";
+            else if (name.Contains("real"))
+                return $"Real trading group: {groupName}";
+            else
+                return $"Trading group: {groupName}";
+        }
+
+        /// <summary>
+        /// Determine appropriate leverage for a group based on name and users
+        /// </summary>
+        private uint DetermineGroupLeverage(string groupName, List<UserInfo> users)
+        {
+            if (users.Count > 0)
+            {
+                // Use the most common leverage among users
+                var leverages = users.Where(u => u.Leverage > 0).Select(u => u.Leverage).ToList();
+                if (leverages.Count > 0)
+                {
+                    return (uint)leverages.GroupBy(l => l).OrderByDescending(g => g.Count()).First().Key;
+                }
+            }
+
+            // Default leverage based on group name
+            string name = groupName.ToLower();
+            if (name.Contains("demo"))
+                return 500U;
+            else if (name.Contains("vip") || name.Contains("executive"))
+                return 200U;
+            else if (name.Contains("zero"))
+                return 1000U;
+            else
+                return 100U;
+        }
+
+        /// <summary>
+        /// Determine commission for a group based on name
+        /// </summary>
+        private double DetermineGroupCommission(string groupName)
+        {
+            string name = groupName.ToLower();
+            
+            if (name.Contains("zero"))
+                return 0.0;
+            else if (name.Contains("vip") || name.Contains("executive"))
+                return 0.0;
+            else if (name.Contains("demo"))
+                return 0.0;
+            else
+                return 7.0; // $7 per lot
+        }
+
+        /// <summary>
+        /// Determine user rights for a group
+        /// </summary>
+        private uint DetermineGroupRights(string groupName, bool isDemo, bool isManager)
+        {
+            if (isManager)
+                return 127U; // Full rights for managers
+            else if (isDemo)
+                return 71U;  // Demo rights
+            else
+                return 67U;  // Standard real trading rights
+        }
+
+        /// <summary>
+        /// Load created groups from persistent storage file
+        /// </summary>
+        private void LoadCreatedGroupsFromFile()
+        {
+            try
+            {
+                if (File.Exists(_groupStorageFile))
+                {
+                    var json = File.ReadAllText(_groupStorageFile);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        var loadedGroups = JsonConvert.DeserializeObject<Dictionary<string, GroupInfo>>(json);
+                        if (loadedGroups != null)
+                        {
+                            _createdGroups = loadedGroups;
+                            System.Diagnostics.Debug.WriteLine($"Loaded {_createdGroups.Count} created groups from file");
+                        }
+                    }
+                }
+                else
+                {
+                    // Try to load from comprehensive groups file if available
+                    LoadComprehensiveGroupsData();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading created groups from file: {ex.Message}");
+                _createdGroups = new Dictionary<string, GroupInfo>();
+            }
+        }
+
+        /// <summary>
+        /// Load comprehensive MT5 groups data if available
+        /// </summary>
+        private void LoadComprehensiveGroupsData()
+        {
+            try
+            {
+                // Try multiple possible locations for the comprehensive groups file
+                string[] possiblePaths = {
+                    "complete_mt5_groups.json",                    // Current directory
+                    "bin\\Debug\\complete_mt5_groups.json",       // Debug folder
+                    "..\\complete_mt5_groups.json",               // Parent directory
+                    "..\\..\\complete_mt5_groups.json",           // Workspace root
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "complete_mt5_groups.json") // App directory
+                };
+
+                string comprehensiveFile = null;
+                foreach (string path in possiblePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        comprehensiveFile = path;
+                        System.Diagnostics.Debug.WriteLine($"Found comprehensive groups file at: {path}");
+                        break;
+                    }
+                }
+
+                if (comprehensiveFile != null)
+                {
+                    var json = File.ReadAllText(comprehensiveFile);
+                    if (!string.IsNullOrEmpty(json))
+                    {
+                        var comprehensiveGroups = JsonConvert.DeserializeObject<Dictionary<string, GroupInfo>>(json);
+                        if (comprehensiveGroups != null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Successfully deserialized {comprehensiveGroups.Count} groups from comprehensive file");
+                            
+                            // Load comprehensive groups as baseline, but don't overwrite user-created groups
+                            int loadedCount = 0;
+                            foreach (var kvp in comprehensiveGroups)
+                            {
+                                if (!_createdGroups.ContainsKey(kvp.Key))
+                                {
+                                    _createdGroups[kvp.Key] = kvp.Value;
+                                    loadedCount++;
+                                }
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"Loaded {loadedCount} new comprehensive groups as baseline");
+                            System.Diagnostics.Debug.WriteLine($"Total groups in memory: {_createdGroups.Count}");
+                            
+                            // Save the merged data to the regular storage file
+                            SaveCreatedGroupsToFile();
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("Failed to deserialize comprehensive groups - result was null");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading comprehensive groups data: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get all group names (for internal use in user discovery)
+        /// </summary>
+        private string[] GetAllGroupNames()
+        {
+            return _createdGroups.Keys.ToArray();
+        }
+
+        /// <summary>
+        /// Get count of loaded groups (for debugging)
+        /// </summary>
+        public int GetLoadedGroupsCount()
+        {
+            return _createdGroups.Count;
+        }
+
+        /// <summary>
+        /// Get names of first N loaded groups (for debugging)
+        /// </summary>
+        public List<string> GetLoadedGroupNames(int limit = 10)
+        {
+            return _createdGroups.Keys.Take(limit).ToList();
+        }
+
+        /// <summary>
+        /// Get all loaded group names (for debugging)
+        /// </summary>
+        public List<string> GetLoadedGroupNames()
+        {
+            return _createdGroups.Keys.ToList();
+        }
+
+        /// <summary>
+        /// Force reload groups from file (for debugging)
+        /// </summary>
+        public void ReloadGroupsFromFile()
+        {
+            LoadCreatedGroupsFromFile();
+        }
+
+        /// <summary>
+        /// Save created groups to persistent storage file
+        /// </summary>
+        private void SaveCreatedGroupsToFile()
+        {
+            try
+            {
+                var json = JsonConvert.SerializeObject(_createdGroups, Formatting.Indented);
+                File.WriteAllText(_groupStorageFile, json);
+                System.Diagnostics.Debug.WriteLine($"Saved {_createdGroups.Count} created groups to file");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving created groups to file: {ex.Message}");
             }
         }
 

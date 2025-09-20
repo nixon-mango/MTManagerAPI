@@ -116,6 +116,18 @@ namespace MT5WebAPI
                     {
                         responseText = _controller.GetStatus();
                     }
+                    else if (path == "/api/debug/groups" && method == "GET")
+                    {
+                        responseText = _controller.GetGroupsDebugInfo();
+                    }
+                    else if (path == "/api/debug/reload-groups" && method == "POST")
+                    {
+                        responseText = _controller.ReloadGroups();
+                    }
+                    else if (path == "/api/debug/user-discovery" && method == "GET")
+                    {
+                        responseText = _controller.GetUserDiscoveryInfo();
+                    }
                     else if (path.StartsWith("/api/user/") && path.EndsWith("/group") && method == "GET")
                     {
                         string loginStr = ExtractFromPath(path, "/api/user/", "/group");
@@ -180,6 +192,24 @@ namespace MT5WebAPI
                     {
                         string groupName = ExtractFromPath(path, "/api/group/", "/positions");
                         responseText = _controller.GetGroupPositions(groupName);
+                    }
+                    else if (path == "/api/groups" && method == "GET")
+                    {
+                        responseText = _controller.GetAllGroups();
+                    }
+                    else if (path == "/api/groups" && method == "POST")
+                    {
+                        responseText = _controller.CreateGroup(GetRequestBody(request));
+                    }
+                    else if (path.StartsWith("/api/groups/") && method == "GET")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/groups/", "");
+                        responseText = _controller.GetGroup(groupName);
+                    }
+                    else if (path.StartsWith("/api/groups/") && method == "PUT")
+                    {
+                        string groupName = ExtractFromPath(path, "/api/groups/", "");
+                        responseText = _controller.UpdateGroup(groupName, GetRequestBody(request));
                     }
                     else if (path == "/api/balance" && method == "POST")
                     {

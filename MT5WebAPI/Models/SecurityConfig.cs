@@ -104,6 +104,25 @@ namespace MT5WebAPI.Models
 
             return !string.IsNullOrEmpty(origin) && AllowedOrigins.Contains(origin);
         }
+
+        /// <summary>
+        /// Enable API key authentication (used by command line --secure flag)
+        /// </summary>
+        public void EnableSecurity()
+        {
+            RequireApiKey = true;
+            
+            // If no keys are configured, generate a default one
+            if (ValidApiKeys.Count == 0)
+            {
+                var defaultKey = GenerateApiKey();
+                ValidApiKeys.Add(defaultKey);
+                Console.WriteLine($"⚠️  Security enabled but no API keys configured. Generated default key: {defaultKey}");
+                Console.WriteLine("   Add this to your App.config for permanent use:");
+                Console.WriteLine($"   <add key=\"ApiKeys\" value=\"{defaultKey}\" />");
+                Console.WriteLine($"   <add key=\"RequireApiKey\" value=\"true\" />");
+            }
+        }
     }
 
     /// <summary>
