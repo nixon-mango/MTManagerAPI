@@ -993,8 +993,27 @@ namespace MT5ManagerAPI
         {
             try
             {
-                string comprehensiveFile = "complete_mt5_groups.json";
-                if (File.Exists(comprehensiveFile))
+                // Try multiple possible locations for the comprehensive groups file
+                string[] possiblePaths = {
+                    "complete_mt5_groups.json",                    // Current directory
+                    "bin\\Debug\\complete_mt5_groups.json",       // Debug folder
+                    "..\\complete_mt5_groups.json",               // Parent directory
+                    "..\\..\\complete_mt5_groups.json",           // Workspace root
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "complete_mt5_groups.json") // App directory
+                };
+
+                string comprehensiveFile = null;
+                foreach (string path in possiblePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        comprehensiveFile = path;
+                        System.Diagnostics.Debug.WriteLine($"Found comprehensive groups file at: {path}");
+                        break;
+                    }
+                }
+
+                if (comprehensiveFile != null)
                 {
                     var json = File.ReadAllText(comprehensiveFile);
                     if (!string.IsNullOrEmpty(json))
