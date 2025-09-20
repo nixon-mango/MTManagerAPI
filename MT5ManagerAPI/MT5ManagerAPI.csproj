@@ -68,6 +68,7 @@
     <Compile Include="Models\UserInfo.cs" />
     <Compile Include="Models\AccountInfo.cs" />
     <Compile Include="Models\PositionInfo.cs" />
+    <Compile Include="Models\GroupInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

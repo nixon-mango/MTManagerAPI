@@ -243,7 +243,7 @@ namespace MT5ManagerAPI.Models
                 Description = description ?? $"Sample group: {name}",
                 Company = "MT5 Trading Company",
                 Currency = "USD",
-                Leverage = isDemo ? 500 : 100,
+                Leverage = (uint)(isDemo ? 500 : 100),
                 DepositMin = isDemo ? 0 : 100,
                 DepositMax = 1000000,
                 CreditLimit = 0,
@@ -254,7 +254,7 @@ namespace MT5ManagerAPI.Models
                 CommissionType = 0,
                 AgentCommission = 0,
                 FreeMarginMode = 0,
-                Rights = isDemo ? 71 : 67, // Different rights for demo vs real
+                Rights = (uint)(isDemo ? 71 : 67), // Different rights for demo vs real
                 CheckPassword = true,
                 Timeout = 60,
                 OHLCMaxCount = 65000,
